@@ -1,0 +1,10 @@
+.claude
+tests
+test-results
+dist
+node_modules
+.env
+.env.local
+supabase
+docs
+playwright.config.ts

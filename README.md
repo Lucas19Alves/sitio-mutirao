@@ -4,6 +4,8 @@ Jogo web cooperativo de fazenda em estilo arcade. Duas a quatro pessoas cuidam d
 
 Roda no navegador (desktop, Android, iPhone, tablets) e pode ser instalado na tela inicial (PWA).
 
+**Publicado em:** https://sitio-mutirao.vercel.app
+
 ## Tecnologias
 
 | Camada | Uso |
@@ -127,6 +129,12 @@ O projeto já tem `vercel.json` e `netlify.toml` (SPA + cache dos assets + `sw.j
 
 - **Vercel**: importe o repositório, framework Vite, defina as três variáveis `VITE_*` e publique.
 - **Netlify**: importe o repositório (build `npm run build`, pasta `dist`) e defina as mesmas variáveis.
+
+Teste de fumaça no ambiente publicado (cria duas contas, desktop e celular):
+
+```bash
+node tests/e2e/smoke-prod.mjs https://sitio-mutirao.vercel.app
+```
 
 Depois do deploy, adicione a URL publicada em **Authentication → URL Configuration → Site URL** no Supabase.
 
