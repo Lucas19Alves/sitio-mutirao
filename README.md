@@ -4,7 +4,7 @@ Jogo web cooperativo de fazenda em estilo arcade. Duas a quatro pessoas cuidam d
 
 Roda no navegador (desktop, Android, iPhone, tablets) e pode ser instalado na tela inicial (PWA).
 
-**Publicado em:** https://sitio-mutirao.vercel.app
+**Publicado em:** https://sitio-mutirao.vercel.app (deploy automático a cada push na branch `main` do repositório GitHub conectado; outras branches geram previews).
 
 ## Tecnologias
 
