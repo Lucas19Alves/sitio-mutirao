@@ -17,7 +17,7 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1366, height: 768 }
   await p.getByTestId('save-look').click({ timeout: 30000 });
   await p.getByTestId('create-farm').click();
   await p.getByTestId('hud-level').waitFor({ timeout: 60000 });
-  await p.locator('[data-testid=net-status]', { hasText: 'online' }).waitFor({ timeout: 30000 });
+  await p.locator('[data-testid=net-status]', { hasText: 'online' }).waitFor({ state: 'attached', timeout: 30000 });
   await p.waitForTimeout(1500);
   await p.screenshot({ path: `test-results/prod-${name}.png` });
   console.log(`✓ ${name}: jogo carregado e conectado`);

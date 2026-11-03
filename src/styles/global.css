@@ -517,7 +517,7 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--folha); }
   .round-btn { width: 40px; height: 40px; } .round-btn img { width: 24px; height: 24px; }
   .players { padding: 2px 8px 2px 2px; }
   .pl-face { width: 30px; height: 30px; }
-  .net { display: none; }
+  .net.ok { display: none; }
   .hud-bottom { left: 0; right: 0; transform: none; bottom: 0; }
   .dock { border-radius: 22px 22px 0 0; border-bottom: 0; justify-content: space-around; padding: 6px 4px calc(6px + var(--sab)); }
   .dock-btn { min-width: 0; flex: 1; padding: 0 1px 2px; }
