@@ -16,9 +16,9 @@ Roda no navegador (desktop, Android, iPhone, tablets) e pode ser instalado na te
 | Supabase | Auth (username + senha), Postgres com RLS, RPCs que validam a economia, Realtime (Broadcast + Presence), 1 Edge Function |
 | Playwright | Testes E2E com dois navegadores independentes |
 
-O mundo é **isométrico 2.5D**: uma ilha-diorama com laterais de terra e cachoeira, prédios modelados como volumes 3D simples (faces iluminadas, telhados, chaminés) e ordenação por profundidade. A lógica continua numa grade quadrada, idêntica à do servidor; só a exibição é projetada.
+O mundo é **top-down ortográfico** (câmera 2D de cima, sem projeção isométrica): grade retangular de 32 px, caminhos retos, canteiros e prédios alinhados aos eixos e ordenação por Y. Volume vem da arte em 3/4 frontal cartoon (fachada + telhado), de sombras para baixo-direita e de gradientes; a direção de arte está em [docs/ART_BIBLE.md](docs/ART_BIBLE.md). A lógica usa a mesma grade do servidor.
 
-Toda a arte é procedural (Canvas 2D gerado no carregamento) e a **trilha sonora é generativa** (violão dedilhado por Karplus-Strong, pad, flauta, baixo, pássaros e vento sintetizados em WebAudio): nenhum arquivo de imagem ou áudio é baixado, e a música nunca repete igual. Música e efeitos têm volumes separados em Ajustes.
+Toda a arte é procedural e cartoon (Canvas 2D pintado a 2× no carregamento e empacotado em atlas: tileset do terreno com extrusão, natureza, prédios, cultivos em 6 estágios, efeitos e spritesheets de personagem com 6 poses × 4 direções) e a **trilha sonora é generativa** (violão dedilhado por Karplus-Strong, pad, flauta, baixo, pássaros e vento sintetizados em WebAudio): nenhum arquivo de imagem ou áudio é baixado, e a música nunca repete igual. Música e efeitos têm volumes separados em Ajustes.
 
 ## Como executar
 

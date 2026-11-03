@@ -5,8 +5,10 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 const F = new URL('../../.showcase.json', import.meta.url);
 const mode = process.argv[2];
 const browser = await chromium.launch();
-const vp = process.argv.includes('--mobile') ? { width: 390, height: 844 } : { width: 1440, height: 900 };
-const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1 });
+const vpArg = process.argv.find((a) => a.startsWith('--vp='));
+const vp = vpArg ? { width: Number(vpArg.slice(5).split('x')[0]), height: Number(vpArg.slice(5).split('x')[1]) } : process.argv.includes('--mobile') ? { width: 390, height: 844 } : { width: 1440, height: 900 };
+const touch = vp.width < 800;
+const ctx = await browser.newContext({ viewport: vp, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch });
 const p = await ctx.newPage();
 const errs = [];
 p.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
@@ -36,10 +38,10 @@ if (mode === 'signup') {
   const spots = process.argv.slice(3).filter((x) => !x.startsWith('--'));
   for (const s of spots) {
     const [x, y, z, panel] = s.split(',');
-    await p.evaluate(([x, y, z]) => { const sc = window.__mutirao.scene; sc.cameras.main.stopFollow(); sc.cameras.main.setZoom(Number(z)); sc.cameras.main.centerOn((Number(x) - Number(y)) * 32 + 52 * 32 + 64, (Number(x) + Number(y)) * 16 + 180); }, [x, y, z]);
+    await p.evaluate(([x, y, z]) => { const sc = window.__mutirao.scene; sc.cameras.main.stopFollow(); sc.cameras.main.setZoom(Number(z)); if (x === 'me') { sc.cameras.main.setZoom(z ? Number(z) : sc.cameras.main.zoom); sc.cameras.main.centerOn(sc.me.x, sc.me.y); return; } sc.cameras.main.centerOn(Number(x) * 32, Number(y) * 32); }, [x, y, z]);
     if (panel) await p.getByTestId(`dock-${panel}`).click();
     await p.waitForTimeout(700);
-    await p.screenshot({ path: `test-results/shot-${s.replace(/,/g, '_')}${vp.width < 500 ? '-m' : ''}.png` });
+    await p.screenshot({ path: `test-results/shot-${s.replace(/,/g, '_')}-${vp.width}x${vp.height}.png` });
     if (panel) await p.getByRole('button', { name: 'Fechar painel' }).click();
   }
 }

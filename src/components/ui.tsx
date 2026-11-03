@@ -87,6 +87,9 @@ export function Btn({ children, onClick, kind = 'primary', disabled, small, titl
   );
 }
 
+/** Cor de fita de cada categoria de painel (ver docs/ART_BIBLE.md). */
+const CAT_BY_ICON: Record<string, string> = { ui_bag: 'leaf', ui_barn: 'leaf', ui_coins: 'gold', ui_build: 'wood', ui_scroll: 'sky', ui_tools: 'steel', ui_progress: 'grape', ui_gear: 'steel', ui_people: 'leaf', wheat: 'leaf' };
+
 export function Sheet({ title, subtitle, icon, src, onClose, children, wide }: { title: string; subtitle?: string; icon?: string; src?: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -96,10 +99,11 @@ export function Sheet({ title, subtitle, icon, src, onClose, children, wide }: {
     play('open');
     return () => window.removeEventListener('keydown', k);
   }, [onClose]);
+  const cat = CAT_BY_ICON[icon ?? ''] ?? (src ? 'wood' : 'leaf');
   return (
-    <section className={`sheet${wide ? ' sheet-wide' : ''}`} role="dialog" aria-label={title} ref={ref} tabIndex={-1}>
+    <section className={`sheet cat-${cat}${wide ? ' sheet-wide' : ''}`} role="dialog" aria-label={title} ref={ref} tabIndex={-1}>
       <header className="sheet-head">
-        {(icon || src) && <Medal icon={icon} src={src} size={54} tone="ipe" />}
+        {(icon || src) && <Medal icon={icon} src={src} size={46} tone="esm" />}
         <div className="sheet-title"><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
         <button className="icon-btn close" onClick={onClose} aria-label="Fechar painel">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" /></svg>

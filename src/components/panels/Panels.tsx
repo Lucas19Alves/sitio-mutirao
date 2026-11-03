@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   ITEMS, ITEM_BY_ID, RECIPES, CROPS, TOOLS, BUILDING_BY_ID, REGION_BY_ID, type ItemCat,
 } from '../../data/catalog.ts';
@@ -12,6 +12,7 @@ import { errorText } from '../../utils/errors.ts';
 import { fmt, fmtTime } from '../../utils/format.ts';
 import { play, sound } from '../../game/audio.ts';
 import { music } from '../../game/music.ts';
+import { gfx, type Quality } from '../../game/gfx.ts';
 import { changePassword, signOut } from '../../services/auth.ts';
 import { supabase } from '../../services/supabase.ts';
 import { CharacterEditor } from '../CharacterEditor.tsx';
@@ -47,6 +48,7 @@ export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: Pa
     case 'orders': return <OrdersPanel onClose={onClose} />;
     case 'tools': return <ToolsPanel onClose={onClose} />;
     case 'progress': return <ProgressPanel onClose={onClose} />;
+    case 'character': return <Sheet title="Aparência" icon="ui_people" onClose={onClose} wide><CharacterEditor embedded me={me} onSaved={(l) => { onLookChange(l); onClose(); toast('Aparência salva.', 'ok'); }} /></Sheet>;
     case 'settings': return <SettingsPanel onClose={onClose} me={me} onExit={onExit} onLookChange={onLookChange} />;
     default: return null;
   }
@@ -242,6 +244,7 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
   const [pw, setPw] = useState({ cur: '', next: '' });
   const [pwMsg, setPwMsg] = useState('');
   const [editing, setEditing] = useState(false);
+  useSyncExternalStore(gfx.subscribe, () => `${gfx.quality}${gfx.effects}${gfx.reduceMotion}${gfx.joystick}`);
   const f = s.farm!;
   const copy = async () => { try { await navigator.clipboard.writeText(f.invite_code); toast('Código copiado.', 'ok'); } catch { toast(`Código: ${f.invite_code}`); } };
   const leave = async () => {
@@ -272,6 +275,18 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
         <div className="slider"><img src={iconUrl('ui_music', 64)} alt="" /><input type="range" min={0} max={1} step={0.05} value={mvol} onChange={(e) => { sound.setMusicVolume(Number(e.target.value)); setMvol(Number(e.target.value)); }} aria-label="Volume da música" /><span className="small">{Math.round(mvol * 100)}%</span></div>
         <label className="row"><input type="checkbox" checked={!muted} onChange={(e) => { sound.setMuted(!e.target.checked); setMuted(!e.target.checked); }} /> Efeitos sonoros</label>
         <div className="slider"><img src={iconUrl('ui_chat', 64)} alt="" /><input type="range" min={0} max={1} step={0.05} value={vol} onChange={(e) => { sound.setVolume(Number(e.target.value)); setVol(Number(e.target.value)); play('click'); }} aria-label="Volume dos efeitos" /><span className="small">{Math.round(vol * 100)}%</span></div>
+      </section>
+      <section className="panel inset">
+        <h3 className="sub">Gráficos e controles</h3>
+        <div className="seg" role="radiogroup" aria-label="Qualidade gráfica">
+          {([['high', 'Alta'], ['medium', 'Média'], ['low', 'Leve']] as [Quality, string][]).map(([q, n]) => (
+            <button key={q} role="radio" aria-checked={gfx.quality === q} className={gfx.quality === q ? 'on' : ''} onClick={() => gfx.setQuality(q)}>{n}</button>
+          ))}
+        </div>
+        <p className="hint">Leve desliga nuvens, bichos e balanço das árvores (bom para celulares simples). Mudar a densidade da decoração vale ao reabrir a fazenda.</p>
+        <label className="row"><input type="checkbox" checked={gfx.effects} onChange={(e) => gfx.setEffects(e.target.checked)} /> Partículas e confete</label>
+        <label className="row"><input type="checkbox" checked={gfx.reduceMotion} onChange={(e) => gfx.setReduceMotion(e.target.checked)} /> Reduzir movimento</label>
+        <label className="row"><input type="checkbox" checked={gfx.joystick} onChange={(e) => gfx.setJoystick(e.target.checked)} /> Joystick na tela</label>
       </section>
       <section className="panel inset">
         <h3 className="sub">Conta</h3>
