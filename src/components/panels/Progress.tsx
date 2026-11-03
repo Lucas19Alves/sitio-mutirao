@@ -11,7 +11,7 @@ export function ProgressPanel({ onClose }: { onClose: () => void }) {
   const need = xpNeed(f.level);
   const st = f.progression.stats;
   return (
-    <Sheet title="Progressão da fazenda" onClose={onClose}>
+    <Sheet title="Progressão da fazenda" subtitle={`Nível ${f.level} de ${MAX_LEVEL}`} icon="ui_progress" onClose={onClose}>
       <div className="prog-head">
         <span className="plate small" style={{ ['--p' as string]: `${(need ? f.xp / need : 1) * 360}deg` }}><span className="plate-lv">{f.level}</span></span>
         <div className="grow">

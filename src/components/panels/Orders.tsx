@@ -6,6 +6,7 @@ import { Sheet, ItemIcon, Btn, Bar, Coins, toast } from '../ui.tsx';
 import { act } from './Panels.tsx';
 import { fmt } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
+import { npcPortrait } from '../../game/art/portraits.ts';
 
 export function OrdersPanel({ onClose }: { onClose: () => void }) {
   const s = useFarm();
@@ -30,12 +31,11 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Sheet title="Pedidos e contratos" onClose={onClose}>
+    <Sheet title="Pedidos e contratos" subtitle="Encomendas de moradores e comerciantes" icon="ui_scroll" onClose={onClose}>
       {contract && cdef && (
         <section className={`contract panel${cLocked ? ' locked' : ''}`} data-testid="contract">
           <div className="row between"><span className="tag">Contrato coletivo</span>{cLocked && <span className="lock">Nível {contract.reward.level}</span>}</div>
-          <h3>{cdef.title}</h3>
-          <p className="muted small">{contract.npc} encomendou em grande quantidade. Cada membro entrega o que puder; a recompensa é da fazenda.</p>
+          <div className="npc"><img src={npcPortrait(contract.npc, 96)} alt="" /><div><h3>{cdef.title}</h3><p className="muted small">{contract.npc} encomendou em grande quantidade. Cada membro entrega o que puder; a recompensa é da fazenda.</p></div></div>
           <div className="row"><Bar value={cGot} max={cNeed} /><span className="small">{Math.floor((cGot / cNeed) * 100)}%</span></div>
           <ul className="need">
             {Object.entries(contract.items).map(([k, q]) => {
@@ -69,7 +69,7 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
           const ready = Object.entries(o.items).every(([k, q]) => s.qty(k) >= q);
           return (
             <li key={o.slot} className={`order panel${ready ? ' ready' : ''}`} data-testid={`order-${o.slot}`}>
-              <div className="row between"><strong>{o.npc}</strong><span className="reward"><Coins n={o.reward.coins} size={16} /><span>+{o.reward.xp} XP</span></span></div>
+              <div className="row between"><span className="npc"><img src={npcPortrait(o.npc, 96)} alt="" /><strong>{o.npc}</strong></span><span className="reward"><Coins n={o.reward.coins} size={16} /><span>+{o.reward.xp} XP</span></span></div>
               <ul className="order-items">
                 {Object.entries(o.items).map(([k, q]) => (
                   <li key={k} className={s.qty(k) >= q ? 'ok' : 'miss'}><ItemIcon id={k} size={30} /><span>{Math.min(s.qty(k), q)}/{q}</span><small>{ITEM_BY_ID[k].name}</small></li>

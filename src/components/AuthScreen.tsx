@@ -1,23 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { signIn, signUp, validatePassword, validateUsername } from '../services/auth.ts';
-import { portrait, type Look } from '../game/art/characters.ts';
+import { dioramaUrl } from '../game/art/portraits.ts';
 import { iconUrl } from '../game/art/icons.ts';
 import { sound } from '../game/audio.ts';
 
-const DUO: Look[] = [
-  { skin: 1, hair: 2, hairColor: 3, shirt: 2, shirtColor: 0, pants: 0, hat: 1, hatColor: 0, acc: 0 },
-  { skin: 4, hair: 5, hairColor: 0, shirt: 1, shirtColor: 2, pants: 3, hat: 0, hatColor: 3, acc: 4 },
-];
-
-function Duo() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current!;
-    el.innerHTML = '';
-    DUO.forEach((l) => { const c = portrait(l, 2); c.className = 'duo-char'; el.appendChild(c); });
-  }, []);
-  return <div className="duo" ref={ref} aria-hidden />;
+function Diorama() {
+  const [src] = useState(() => dioramaUrl());
+  return <div className="diorama" aria-hidden><img src={src} alt="" /></div>;
 }
 
 export function AuthScreen({ onDone }: { onDone: (s: Session) => void }) {
@@ -53,7 +43,7 @@ export function AuthScreen({ onDone }: { onDone: (s: Session) => void }) {
       <div className="auth-hero">
         <h1 className="logo">Sítio<br />Mutirão</h1>
         <p className="tagline">Uma fazenda, vários donos. Plantem, construam e expandam a mesma terra — juntos.</p>
-        <Duo />
+        <Diorama />
         <ul className="auth-feats">
           <li><img src={iconUrl('wheat')} alt="" width={28} height={28} />Colham e produzam com o estoque compartilhado</li>
           <li><img src={iconUrl('beam')} alt="" width={28} height={28} />Ergam prédios em projetos coletivos</li>

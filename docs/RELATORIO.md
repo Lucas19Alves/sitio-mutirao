@@ -38,6 +38,12 @@ Primeira versão jogável de um jogo cooperativo de fazenda: várias pessoas na 
 Telas de entrada/cadastro, criação de personagem, lista de fazendas (criar / entrar por código), carregamento, HUD (nível com anel de XP, moedas, reputação, ocupação do celeiro, missão atual, próximo desbloqueio, membros online, estado da conexão), painéis de Estoque, Mercado, Projetos, Pedidos/Contratos, Ferramentas, Prédio (filas e receitas), Plantio, Progressão e Ajustes (convite, membros, som, aparência, senha, sair).
 Desktop: WASD/setas, clique, roda para zoom, `E`/espaço para interagir, `Esc` fecha painéis. Celular: toque para andar/interagir, botão de ação contextual, arrastar para olhar o mapa, pinça para zoom, painéis como folha inferior, safe areas do iOS, retrato e paisagem. PWA instalável (manifest + service worker).
 
+## Versão 0.2: isométrico, trilha sonora e interface
+
+- Mundo reescrito em **projeção isométrica 2:1** (ilha com laterais de terra, cachoeira, floresta em volta). Prédios desenhados como caixas 3D com faces iluminadas, janelas com floreiras, portas, placas do produto, chaminés com fumaça e pás do moinho girando. Canteiros e cultivos em losango. Seleção por toque/mouse com anel de destaque; teclado convertido para as diagonais da grade.
+- **Trilha sonora generativa** calma do campo + ambiência; liga/desliga na HUD e volumes separados em Ajustes; pausa quando a aba sai do primeiro plano.
+- **HUD e menus refeitos**: medalhão de nível com anel de XP, fita com o nome da fazenda, pílulas de recursos com contagem animada e "+N", minimapa clicável, rastreador de missão com ícone do objetivo e recompensas, dock com ícones pintados, botão de ação com ícone do alvo, toasts com ícone, janelas de celebração (subida de nível com desbloqueios e nova região), painéis com cabeçalho anil em chita e medalhão, retrato isométrico de cada prédio, receitas em fluxo insumo → produto, filas em anéis de progresso, cartões de plantio, rostos procedurais dos moradores, tela de entrada com diorama isométrico.
+
 ## O que foi verificado (e como)
 
 | # | Cenário | Verificação |

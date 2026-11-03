@@ -8,6 +8,10 @@ import { Sheet, ItemIcon, Btn, Bar, CostList, toast } from '../ui.tsx';
 import { act } from './Panels.tsx';
 import { fmt } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
+import { buildingPortrait } from '../../game/art/portraits.ts';
+import { iconUrl } from '../../game/art/icons.ts';
+
+const thumbOf = (k: string) => (k.startsWith('r:') ? iconUrl('ui_map', 96) : buildingPortrait(k.slice(2), 128));
 
 /** Valor total (moedas + itens a preço de mercado) entregue/necessário. */
 function value(p: Project) {
@@ -55,7 +59,7 @@ function ActiveProject({ p, highlight }: { p: Project; highlight: boolean }) {
   };
   return (
     <li className={`proj panel${highlight ? ' hl' : ''}`} data-testid={`proj-${p.k}`}>
-      <div className="row between"><strong>{titleOf(p.k)}</strong><button className="link" onClick={() => focusOnMap(p.k)}>Ver no mapa</button></div>
+      <div className="proj-head"><img className="thumb" src={thumbOf(p.k)} alt="" /><div className="grow"><strong>{titleOf(p.k)}</strong><button className="link" onClick={() => focusOnMap(p.k)}>Ver no mapa</button></div></div>
       <div className="row"><Bar value={got} max={need} /><span className="small">{Math.floor((got / Math.max(1, need)) * 100)}%</span></div>
       <ul className="need">
         {rows.map(([k, q]) => {
@@ -108,7 +112,7 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Sheet title="Quadro de projetos" onClose={onClose}>
+    <Sheet title="Quadro de projetos" subtitle="Obras coletivas: cada um entrega o que puder" icon="ui_build" onClose={onClose}>
       <div ref={listRef}>
         <p className="muted small">Construções, melhorias e expansões são obras coletivas: qualquer membro entrega parte dos materiais, a qualquer hora, e o progresso fica salvo.</p>
         {active.length > 0 && <h3 className="sub">Em andamento ({active.length}/4)</h3>}
@@ -117,7 +121,7 @@ export function ProjectsPanel({ onClose }: { onClose: () => void }) {
         <ul className="list">
           {options.map((o) => (
             <li key={o.k} data-k={o.k} className={`proj panel${o.locked ? ' locked' : ''}${focus === o.k ? ' hl' : ''}`}>
-              <div className="row between"><strong>{o.title}</strong>{o.locked ? <span className="lock">{o.locked}</span> : <button className="link" onClick={() => focusOnMap(o.k)}>Ver no mapa</button>}</div>
+              <div className="proj-head"><img className="thumb" src={thumbOf(o.k)} alt="" /><div className="grow"><strong>{o.title}</strong>{o.locked ? <span className="lock"><img src={iconUrl('ui_lock', 32)} width={14} height={14} alt="" />{o.locked}</span> : <button className="link" onClick={() => focusOnMap(o.k)}>Ver no mapa</button>}</div></div>
               <p className="muted small">{o.desc}</p>
               <CostList cost={o.cost} />
               {!o.locked && <Btn small onClick={() => start(o)} disabled={active.length >= 4} testid={`start-${o.k}`}>{active.length >= 4 ? 'Máximo de 4 projetos' : 'Começar entregando'}</Btn>}

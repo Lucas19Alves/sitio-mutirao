@@ -2,7 +2,7 @@
 // Uso: node tests/e2e/showcase.mjs signup | shots <regiões...>
 import { chromium } from '@playwright/test';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-const F = new URL('../../test-results/showcase.json', import.meta.url);
+const F = new URL('../../.showcase.json', import.meta.url);
 const mode = process.argv[2];
 const browser = await chromium.launch();
 const vp = process.argv.includes('--mobile') ? { width: 390, height: 844 } : { width: 1440, height: 900 };
@@ -36,7 +36,7 @@ if (mode === 'signup') {
   const spots = process.argv.slice(3).filter((x) => !x.startsWith('--'));
   for (const s of spots) {
     const [x, y, z, panel] = s.split(',');
-    await p.evaluate(([x, y, z]) => { const sc = window.__mutirao.scene; sc.cameras.main.stopFollow(); sc.cameras.main.setZoom(Number(z)); sc.cameras.main.centerOn(Number(x) * 32, Number(y) * 32); }, [x, y, z]);
+    await p.evaluate(([x, y, z]) => { const sc = window.__mutirao.scene; sc.cameras.main.stopFollow(); sc.cameras.main.setZoom(Number(z)); sc.cameras.main.centerOn((Number(x) - Number(y)) * 32 + 52 * 32 + 64, (Number(x) + Number(y)) * 16 + 180); }, [x, y, z]);
     if (panel) await p.getByTestId(`dock-${panel}`).click();
     await p.waitForTimeout(700);
     await p.screenshot({ path: `test-results/shot-${s.replace(/,/g, '_')}${vp.width < 500 ? '-m' : ''}.png` });

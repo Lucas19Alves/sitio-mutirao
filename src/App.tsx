@@ -7,6 +7,8 @@ import { CharacterEditor } from './components/CharacterEditor.tsx';
 import { GameScreen } from './components/GameScreen.tsx';
 import { Toasts } from './components/ui.tsx';
 import { normalizeLook, type Look } from './game/art/characters.ts';
+import { sound } from './game/audio.ts';
+import { music } from './game/music.ts';
 
 export interface Me { id: string; username: string; look: Look; fresh: boolean }
 
@@ -30,6 +32,14 @@ export default function App() {
     let last: string | null = null;
     try { last = localStorage.getItem(LAST_FARM); } catch { /* sem storage */ }
     setScreen(last ? { s: 'game', farm: last } : { s: 'farms' });
+  }, []);
+
+  // áudio só pode começar depois de um gesto do usuário
+  useEffect(() => {
+    const go = () => { sound.unlock(); music.start(); };
+    window.addEventListener('pointerdown', go, { once: true });
+    window.addEventListener('keydown', go, { once: true });
+    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
   }, []);
 
   useEffect(() => {

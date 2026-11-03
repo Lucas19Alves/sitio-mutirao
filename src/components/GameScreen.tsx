@@ -4,6 +4,17 @@ import { store } from '../game/state/store.ts';
 import { realtime } from '../game/multiplayer/realtime.ts';
 import { bus, type PanelId } from '../game/bus.ts';
 import { sound } from '../game/audio.ts';
+import { music } from '../game/music.ts';
+import { iconUrl } from '../game/art/icons.ts';
+
+const TIPS = [
+  'Tudo no estoque é de todos: combinem quem coleta e quem produz.',
+  'Obras coletivas com 2 ou mais membros rendem bônus de cooperação.',
+  'Pedidos pagam cerca de 35% a mais do que vender no mercado.',
+  'Ferramentas melhores cortam com menos golpes e rendem mais.',
+  'Toque num prédio para abrir a produção; colete quando o ícone aparecer.',
+  'A fazenda continua salva quando você sai. Volte quando quiser.',
+];
 import { Hud } from './Hud.tsx';
 import { Panels } from './panels/Panels.tsx';
 import type { Me } from '../App.tsx';
@@ -15,6 +26,7 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [progress, setProgress] = useState(0);
   const [panel, setPanel] = useState<PanelId | null>(null);
+  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
 
   useEffect(() => {
     let alive = true;
@@ -62,20 +74,21 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
   }
 
   return (
-    <div className="game" onPointerDown={() => sound.unlock()}>
+    <div className="game" onPointerDown={() => { sound.unlock(); music.start(); }}>
       <div className="game-canvas" ref={host} data-testid="game-canvas" />
       {phase === 'loading' && (
         <div className="loading">
           <div className="loading-plate">
             <span className="logo">Sítio<br />Mutirão</span>
             <div className="bar bar-ipe"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-            <small>{progress < 0.3 ? 'Abrindo a porteira…' : 'Preparando a terra…'}</small>
+            <small>{progress < 0.3 ? 'Abrindo a porteira…' : progress < 0.6 ? 'Arando a terra…' : 'Erguendo os galpões…'}</small>
+            <p className="tip"><img src={iconUrl('ui_chat', 64)} alt="" width={22} height={22} />{tip}</p>
           </div>
         </div>
       )}
       {phase === 'ready' && (
         <>
-          <Hud me={me} onOpen={setPanel} panelOpen={!!panel} />
+          <Hud me={me} onOpen={setPanel} panelOpen={!!panel} panel={panel} />
           {panel && <Panels panel={panel} onClose={close} me={me} onExit={onExit} onLookChange={(l) => { onLookChange(l); bus.emit('look', l); void realtime.updateLook(l as unknown as Record<string, number>); }} />}
         </>
       )}

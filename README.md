@@ -16,7 +16,9 @@ Roda no navegador (desktop, Android, iPhone, tablets) e pode ser instalado na te
 | Supabase | Auth (username + senha), Postgres com RLS, RPCs que validam a economia, Realtime (Broadcast + Presence), 1 Edge Function |
 | Playwright | Testes E2E com dois navegadores independentes |
 
-Toda a arte é procedural (Canvas 2D gerado no carregamento): nenhum asset de imagem é baixado.
+O mundo é **isométrico 2.5D**: uma ilha-diorama com laterais de terra e cachoeira, prédios modelados como volumes 3D simples (faces iluminadas, telhados, chaminés) e ordenação por profundidade. A lógica continua numa grade quadrada, idêntica à do servidor; só a exibição é projetada.
+
+Toda a arte é procedural (Canvas 2D gerado no carregamento) e a **trilha sonora é generativa** (violão dedilhado por Karplus-Strong, pad, flauta, baixo, pássaros e vento sintetizados em WebAudio): nenhum arquivo de imagem ou áudio é baixado, e a música nunca repete igual. Música e efeitos têm volumes separados em Ajustes.
 
 ## Como executar
 

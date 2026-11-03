@@ -260,6 +260,73 @@ const P: Record<string, Painter> = {
   heart(x) {
     x.beginPath(); x.moveTo(32, 54); x.bezierCurveTo(4, 36, 12, 8, 32, 22); x.bezierCurveTo(52, 8, 60, 36, 32, 54); fs(x, '#e53950', 3); gloss(x, 22, 24, 5, 3, 0.5);
   },
+  // ---------- ícones da interface
+  ui_bag(x) {
+    x.beginPath(); x.moveTo(14, 24); x.lineTo(50, 24); x.lineTo(54, 56); x.quadraticCurveTo(32, 62, 10, 56); x.closePath(); fs(x, '#c99a5b', 3);
+    x.beginPath(); x.arc(32, 24, 11, Math.PI, 0); x.lineWidth = 5; x.strokeStyle = INK; x.stroke(); x.lineWidth = 3; x.strokeStyle = '#8a6236'; x.stroke();
+    rrect(x, 12, 30, 40, 6, 2); fs(x, '#8a6236', 2); drawIcon(x, { s: 'fruit', c: '#e53935', c2: '#4caf50' }, 22, 14, 6); drawIcon(x, { s: 'root', c: '#f57c00', c2: '#43a047' }, 22, 30, 4);
+  },
+  ui_coins(x) {
+    for (const [a, b] of [[22, 40], [42, 42], [32, 30]] as const) { ellipse(x, a, b + 6, 16, 6); fs(x, '#c98a10', 2.5); ellipse(x, a, b, 16, 7); fs(x, '#f2b632', 2.5); ellipse(x, a, b, 9, 3.6); x.strokeStyle = '#c98a10'; x.lineWidth = 2; x.stroke(); }
+    gloss(x, 26, 27, 6, 2, 0.6);
+  },
+  ui_build(x) {
+    x.save(); x.translate(32, 32); x.rotate(-0.7); rrect(x, -4, -6, 8, 34, 3); fs(x, '#a0673a', 2.5); rrect(x, -14, -18, 28, 14, 4); fs(x, '#9ea7ad', 2.5); x.restore();
+    x.save(); x.translate(30, 36); x.rotate(0.75); rrect(x, -20, -5, 30, 11, 2); fs(x, '#cfd6db', 2.5); for (let i = 0; i < 6; i++) { x.fillStyle = INK; x.fillRect(-18 + i * 5, 5, 2, 3); } rrect(x, 10, -6, 12, 13, 4); fs(x, '#d8434b', 2.5); x.restore();
+  },
+  ui_scroll(x) {
+    rrect(x, 12, 10, 40, 44, 6); fs(x, '#fff6dc', 3); ellipse(x, 32, 10, 22, 5); fs(x, '#e8d8a8', 2.5); ellipse(x, 32, 54, 22, 5); fs(x, '#e8d8a8', 2.5);
+    x.fillStyle = '#9aa0a6'; for (let i = 0; i < 4; i++) x.fillRect(19, 20 + i * 7, i % 2 ? 18 : 26, 3);
+    ellipse(x, 44, 44, 7, 7); fs(x, '#d8434b', 2);
+  },
+  ui_tools(x) {
+    x.save(); x.translate(32, 32); x.rotate(0.75); rrect(x, -3, -26, 6, 52, 2); fs(x, '#a0673a', 2.2); x.beginPath(); x.moveTo(-3, -24); x.quadraticCurveTo(-20, -20, -16, -6); x.lineTo(-3, -12); x.closePath(); fs(x, '#9ea7ad', 2.2); x.restore();
+    x.save(); x.translate(32, 32); x.rotate(-0.75); rrect(x, -3, -26, 6, 52, 2); fs(x, '#8d5a33', 2.2); x.beginPath(); x.moveTo(-18, -22); x.quadraticCurveTo(0, -32, 18, -22); x.quadraticCurveTo(0, -26, -18, -22); fs(x, '#cfd6db', 2.2); x.restore();
+  },
+  ui_progress(x) {
+    rrect(x, 8, 38, 14, 18, 3); fs(x, '#3f8f4f', 2.5); rrect(x, 25, 26, 14, 30, 3); fs(x, '#2f6db5', 2.5); rrect(x, 42, 14, 14, 42, 3); fs(x, '#f2b632', 2.5);
+    x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i / 10) * Math.PI * 2, r = i % 2 ? 4 : 9; x.lineTo(49 + Math.cos(a) * r, 8 + Math.sin(a) * r); } x.closePath(); fs(x, '#ffd54f', 1.8);
+  },
+  ui_map(x) {
+    poly(x, [8, 16, 24, 10, 40, 16, 56, 10, 56, 48, 40, 54, 24, 48, 8, 54]); fs(x, '#fff6dc', 3);
+    poly(x, [24, 10, 40, 16, 40, 54, 24, 48]); x.fillStyle = '#e8d8a8'; x.fill();
+    x.strokeStyle = '#d8434b'; x.lineWidth = 2.5; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(14, 44); x.quadraticCurveTo(28, 24, 46, 30); x.stroke(); x.setLineDash([]);
+    ellipse(x, 46, 30, 4, 4); fs(x, '#d8434b', 2);
+  },
+  ui_gear(x) {
+    x.beginPath(); for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, r = i % 2 ? 22 : 16; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.closePath(); fs(x, '#9ea7ad', 3);
+    ellipse(x, 32, 32, 7, 7); fs(x, '#f7f8f4', 2.5); gloss(x, 24, 22, 6, 3, 0.4);
+  },
+  ui_music(x) {
+    x.lineWidth = 5; x.strokeStyle = INK; x.beginPath(); x.moveTo(24, 46); x.lineTo(24, 14); x.lineTo(50, 8); x.lineTo(50, 40); x.stroke();
+    x.lineWidth = 3; x.strokeStyle = '#1d3b72'; x.stroke();
+    ellipse(x, 18, 46, 8, 6, -0.3); fs(x, '#1d3b72', 2.5); ellipse(x, 44, 40, 8, 6, -0.3); fs(x, '#1d3b72', 2.5);
+  },
+  ui_chat(x) {
+    x.beginPath(); x.moveTo(10, 14); x.quadraticCurveTo(10, 8, 18, 8); x.lineTo(46, 8); x.quadraticCurveTo(54, 8, 54, 16); x.lineTo(54, 36); x.quadraticCurveTo(54, 42, 46, 42); x.lineTo(26, 42); x.lineTo(14, 54); x.lineTo(16, 42); x.quadraticCurveTo(10, 42, 10, 36); x.closePath(); fs(x, '#f7f8f4', 3);
+    for (const a of [22, 32, 42]) { ellipse(x, a, 25, 3.5, 3.5); x.fillStyle = '#1d3b72'; x.fill(); }
+  },
+  ui_barn(x) {
+    poly(x, [8, 30, 32, 10, 56, 30, 56, 56, 8, 56]); fs(x, '#d8434b', 3);
+    rrect(x, 22, 34, 20, 22, 2); fs(x, '#8f2128', 2.5); x.strokeStyle = '#f7f8f4'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(22, 34); x.lineTo(42, 56); x.moveTo(42, 34); x.lineTo(22, 56); x.stroke();
+    x.strokeStyle = '#f7f8f4'; x.lineWidth = 3; x.beginPath(); x.moveTo(12, 30); x.lineTo(32, 14); x.lineTo(52, 30); x.stroke();
+  },
+  ui_lock(x) {
+    x.beginPath(); x.arc(32, 26, 12, Math.PI, 0); x.lineWidth = 7; x.strokeStyle = INK; x.stroke(); x.lineWidth = 4; x.strokeStyle = '#9ea7ad'; x.stroke();
+    rrect(x, 14, 26, 36, 28, 6); fs(x, '#f2b632', 3); ellipse(x, 32, 38, 4, 4); x.fillStyle = INK; x.fill(); x.fillRect(30, 38, 4, 9);
+  },
+  ui_clock(x) {
+    ellipse(x, 32, 32, 22, 22); fs(x, '#f7f8f4', 3); x.strokeStyle = '#1d3b72'; x.lineWidth = 3.5; x.beginPath(); x.moveTo(32, 32); x.lineTo(32, 18); x.moveTo(32, 32); x.lineTo(42, 36); x.stroke();
+  },
+  ui_xp(x) {
+    x.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + (i / 8) * Math.PI * 2, r = i % 2 ? 9 : 24; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.closePath(); fs(x, '#7fd6ff', 3); gloss(x, 28, 24, 4, 3, 0.7);
+  },
+  ui_people(x) {
+    for (const [a, c] of [[22, '#2f6db5'], [42, '#d8434b']] as const) { ellipse(x, a, 24, 9, 9); fs(x, '#eab88f', 2.5); x.beginPath(); x.moveTo(a - 14, 56); x.quadraticCurveTo(a - 14, 36, a, 36); x.quadraticCurveTo(a + 14, 36, a + 14, 56); x.closePath(); fs(x, c, 2.5); }
+  },
+  ui_house(x) {
+    poly(x, [6, 32, 32, 10, 58, 32]); fs(x, '#c0504d', 3); rrect(x, 14, 30, 36, 26, 2); fs(x, '#f3e3c3', 3); rrect(x, 27, 40, 10, 16, 2); fs(x, '#7a4f2a', 2); rrect(x, 17, 36, 7, 7, 1); fs(x, '#bfe3f2', 1.5); rrect(x, 40, 36, 7, 7, 1); fs(x, '#bfe3f2', 1.5);
+  },
 };
 
 export function drawIcon(ctx: Ctx, spec: IconSpec, size: number, ox = 0, oy = 0) {

@@ -39,7 +39,7 @@ export function CharacterEditor({ me, onSaved, embedded }: { me: Me; onSaved: (l
       {!embedded && <h1 className="farms-title">{me.fresh ? 'Quem vai trabalhar na roça?' : 'Sua aparência'}</h1>}
       <div className="char-grid">
         <div className="char-preview panel">
-          <Portrait look={look} scale={2.4} className="char-portrait" />
+          <div className="pedestal"><Portrait look={look} scale={2.2} className="char-portrait" /></div>
           <strong>{me.username}</strong>
           <button className="btn btn-ghost btn-sm" onClick={random}>Sortear visual</button>
         </div>

@@ -8,7 +8,7 @@ const B = `coop_b_${tag}`;
 
 type Hook = {
   store: { farm: { id: string; coins: number; level: number; xp: number; invite_code: string; progression: { quest: number; regions: string[] } }; inv: Record<string, number>; ents: Record<string, { level: number }>; connected: boolean; online: Set<string>; act: (a: unknown) => Promise<{ ok: boolean; e?: string }> };
-  scene: { me: { x: number; y: number }; interact: (t: unknown) => void };
+  scene: { me: { lx: number; ly: number }; interact: (t: unknown) => void };
   remotes: () => { u: string; x: number; y: number }[];
 };
 const hook = (p: Page) => p.evaluate(() => !!(window as unknown as { __mutirao?: Hook }).__mutirao);
@@ -70,12 +70,14 @@ test('cooperativo com dois jogadores reais', async ({ browser }) => {
   await expect(pa.locator('.pl.on')).toHaveCount(2);
 
   // 6. movimentação sincronizada: A anda para a direita com o teclado
-  const before = await st(pb, (h) => h.remotes()[0].x);
-  await pa.locator('[data-testid=game-canvas] canvas').click({ position: { x: 5, y: 400 } }).catch(() => {});
-  await pa.keyboard.down('d'); await pa.waitForTimeout(900); await pa.keyboard.up('d');
-  const meA = await st(pa, (h) => h.scene.me.x);
-  await expect.poll(() => st(pb, (h) => Math.round(h.remotes()[0].x)), { timeout: 10_000 }).toBeGreaterThan(Math.round(before) + 40);
-  await expect.poll(async () => Math.abs((await st(pb, (h) => h.remotes()[0].x)) - meA), { timeout: 10_000 }).toBeLessThan(8);
+  const before = await st(pb, (h) => h.remotes()[0]);
+  await pa.locator('[data-testid=game-canvas] canvas').focus().catch(() => {});
+  // seta para a esquerda da tela = diagonal da grade rumo ao campo (livre de obstáculos)
+  await pa.keyboard.down('a'); await pa.waitForTimeout(1800); await pa.keyboard.up('a');
+  const meA = await st(pa, (h) => ({ x: h.scene.me.lx, y: h.scene.me.ly }));
+  // B vê A se deslocar e chegar à mesma posição (px lógicos)
+  await expect.poll(async () => { const r = await st(pb, (h) => h.remotes()[0]); return Math.hypot(r.x - before.x, r.y - before.y); }, { timeout: 10_000 }).toBeGreaterThan(40);
+  await expect.poll(async () => { const r = await st(pb, (h) => h.remotes()[0]); return Math.hypot(r.x - meA.x, r.y - meA.y); }, { timeout: 10_000 }).toBeLessThan(8);
 
   // 7. coleta simultânea: cada um corta árvores diferentes pela interação real do jogo
   const trees = await pa.evaluate(async () => {

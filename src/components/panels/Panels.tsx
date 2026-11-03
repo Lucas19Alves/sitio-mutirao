@@ -6,10 +6,12 @@ import { useFarm } from '../../hooks/useStore.ts';
 import { store } from '../../game/state/store.ts';
 import { bus, type PanelId } from '../../game/bus.ts';
 import { capacity, marketBonus, growMs, plotCount, canAfford, level } from '../../game/rules.ts';
-import { Sheet, ItemIcon, Coins, CostList, Btn, Bar, Qty, toast } from '../ui.tsx';
+import { Sheet, ItemIcon, Coins, CostList, Btn, Bar, Qty, Medal, Section, toast } from '../ui.tsx';
+import { iconUrl } from '../../game/art/icons.ts';
 import { errorText } from '../../utils/errors.ts';
 import { fmt, fmtTime } from '../../utils/format.ts';
 import { play, sound } from '../../game/audio.ts';
+import { music } from '../../game/music.ts';
 import { changePassword, signOut } from '../../services/auth.ts';
 import { supabase } from '../../services/supabase.ts';
 import { CharacterEditor } from '../CharacterEditor.tsx';
@@ -27,6 +29,7 @@ export async function act(a: Parameters<typeof store.act>[0], okText?: string) {
   return r;
 }
 
+const TOOL_ICON: Record<string, string> = { axe: 'wood', pickaxe: 'stone', sickle: 'wheat', shovel: 'clay' };
 const CAT_LABEL: Record<ItemCat, string> = { raw: 'Recursos', fruit: 'Frutas', crop: 'Cultivos', flower: 'Flores', product: 'Materiais', goods: 'Mercadorias' };
 
 export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: PanelId; onClose: () => void; me: Me; onExit: () => void; onLookChange: (l: Look) => void }) {
@@ -62,25 +65,24 @@ function InventoryPanel({ onClose }: { onClose: () => void }) {
   const item = sel ? ITEM_BY_ID[sel] : null;
   const usedIn = sel ? RECIPES.filter((r) => r.in[sel]) : [];
   return (
-    <Sheet title="Estoque da fazenda" onClose={onClose}>
+    <Sheet title="Estoque da fazenda" subtitle="Compartilhado por todos os membros" icon="ui_bag" onClose={onClose}>
       <div className="cap-row"><span>Celeiro {used}/{cap}</span><Bar value={used} max={cap} tone={used >= cap ? 'chita' : 'folha'} /></div>
       <p className="muted small">Tudo aqui é de todos os membros. Melhore o Celeiro ou construa o Armazém para guardar mais.</p>
-      {used === 0 && <p className="empty">Estoque vazio. Corte árvores e colha capim para começar.</p>}
+      {used === 0 && <div className="empty"><img src={iconUrl('ui_bag', 96)} alt="" />Estoque vazio. Corte árvores e colha capim para começar.</div>}
       {Object.entries(groups).map(([cat, ids]) => (
-        <section key={cat}>
-          <h3 className="sub">{CAT_LABEL[cat as ItemCat]}</h3>
+        <Section key={cat} title={CAT_LABEL[cat as ItemCat]} aside={<span className="small muted">{ids!.reduce((a, id) => a + s.qty(id), 0)}</span>}>
           <div className="inv-grid">
             {ids!.map((id) => (
-              <button key={id} className={`inv-cell${sel === id ? ' on' : ''}`} onClick={() => setSel(sel === id ? null : id)} title={ITEM_BY_ID[id].name} data-testid={`inv-${id}`}>
-                <ItemIcon id={id} size={36} /><span>{s.qty(id)}</span>
+              <button key={id} className={`inv-cell cat-${ITEM_BY_ID[id].cat}${sel === id ? ' on' : ''}`} onClick={() => setSel(sel === id ? null : id)} title={ITEM_BY_ID[id].name} data-testid={`inv-${id}`}>
+                <ItemIcon id={id} size={40} /><span>{s.qty(id)}</span>
               </button>
             ))}
           </div>
-        </section>
+        </Section>
       ))}
       {item && (
         <div className="inv-detail panel">
-          <div className="row"><ItemIcon id={item.id} size={44} /><div><strong>{item.name}</strong><p className="muted small">{item.desc ?? CAT_LABEL[item.cat]}</p></div></div>
+          <div className="row"><Medal icon={item.id} size={58} tone="ipe" /><div><strong>{item.name}</strong><p className="muted small">{item.desc ?? CAT_LABEL[item.cat]}</p></div></div>
           <p>Vale <Coins n={Math.floor(item.price * (1 + marketBonus()))} /> cada no mercado.</p>
           {usedIn.length > 0 && <p className="small">Usado em: {usedIn.map((r) => ITEM_BY_ID[r.id].name).join(', ')}</p>}
           <Btn small kind="ghost" onClick={() => bus.emit('panel', 'sell')}>Ir para Vender</Btn>
@@ -108,14 +110,14 @@ function SellPanel({ onClose }: { onClose: () => void }) {
     if (r.ok) { play('coin'); toast(`Vendido: ${q}× ${ITEM_BY_ID[id].name} por ${fmt(Number(r.g))} moedas.`, 'ok'); }
   };
   return (
-    <Sheet title="Mercado" onClose={onClose}>
+    <Sheet title="Mercado" subtitle="O dinheiro vai para o caixa da fazenda" icon="ui_coins" onClose={onClose}>
       <div className="tabs">
         <button className={tab === 'sell' ? 'on' : ''} onClick={() => setTab('sell')}>Vender</button>
         <button className={tab === 'prices' ? 'on' : ''} onClick={() => setTab('prices')}>Lucratividade</button>
       </div>
       {bonus > 0 && <p className="note">O Mercado está pagando +{Math.round(bonus * 100)}% em tudo.</p>}
       {tab === 'sell' ? (
-        stock.length === 0 ? <p className="empty">Nada para vender ainda. Colete recursos pelo mapa.</p> : (
+        stock.length === 0 ? <div className="empty"><img src={iconUrl('ui_coins', 96)} alt="" />Nada para vender ainda. Colete recursos pelo mapa.</div> : (
           <ul className="list">
             {stock.map((it) => {
               const have = s.qty(it.id);
@@ -123,7 +125,7 @@ function SellPanel({ onClose }: { onClose: () => void }) {
               const unit = it.price * (1 + bonus);
               return (
                 <li key={it.id} className="sell-row">
-                  <ItemIcon id={it.id} size={36} />
+                  <Medal icon={it.id} size={46} />
                   <div className="grow"><strong>{it.name}</strong><span className="muted small">{have} no estoque, {fmt(Math.floor(unit))} cada</span></div>
                   <Qty value={q} max={have} onChange={(n) => setQty({ ...qty, [it.id]: n })} />
                   <Btn small onClick={() => sell(it.id, q)} testid={`sell-${it.id}`}>Vender por {fmt(Math.floor(unit * q))}</Btn>
@@ -157,17 +159,18 @@ function SellPanel({ onClose }: { onClose: () => void }) {
 function ToolsPanel({ onClose }: { onClose: () => void }) {
   const s = useFarm();
   return (
-    <Sheet title="Ferramentas" onClose={onClose}>
-      <p className="muted small">Ferramentas são da fazenda: quando alguém fabrica, todos usam.</p>
-      <ul className="list">
+    <Sheet title="Ferramentas" subtitle="Quando alguém fabrica, todos usam" icon="ui_tools" onClose={onClose}>
+            <ul className="list">
         {TOOLS.map((t) => {
           const cur = s.tool(t.id);
           const nx = t.tiers[cur];
           const lockedBy = nx && (level() < nx.level ? `Nível ${nx.level}` : nx.needs && s.lvl(nx.needs) < 1 ? `Exige ${BUILDING_BY_ID[nx.needs].name}` : null);
           return (
             <li key={t.id} className="tool-row panel" data-testid={`tool-${t.id}`}>
-              <div className="row between"><strong>{t.name}</strong><span className="tier">{cur ? t.tiers[cur - 1].name : 'Não possui'}</span></div>
-              <p className="muted small">{t.desc}</p>
+              <div className="tool-head">
+                <Medal icon={TOOL_ICON[t.id]} size={58} tone={cur ? 'ipe' : 'esm'} />
+                <div className="grow"><strong>{t.name}</strong><span className="tier">{cur ? t.tiers[cur - 1].name : 'Não possui'}</span><p className="muted small">{t.desc}</p></div>
+              </div>
               <div className="pips">{t.tiers.map((x) => <span key={x.tier} className={x.tier <= cur ? 'on' : ''} />)}</div>
               {nx ? (
                 <>
@@ -200,28 +203,31 @@ export function PlantPanel({ e, i, onClose }: { e: string; i: number; onClose: (
     if (bad) toast(errorText(bad.e), 'warn');
   };
   return (
-    <Sheet title={e === 'greenhouse' ? 'Plantar na estufa' : 'O que plantar?'} onClose={onClose}>
-      <ul className="list">
+    <Sheet title={e === 'greenhouse' ? 'Plantar na estufa' : 'O que plantar?'} subtitle={`${empty.length} canteiros livres`} icon="wheat" onClose={onClose}>
+      <div className="plant-grid">
         {CROPS.map((c) => {
           const locked = lv < c.level ? `Nível ${c.level}` : c.region && !s.hasRegion(c.region) ? `Região ${REGION_BY_ID[c.region].name}` : null;
           const it = ITEM_BY_ID[c.id];
           return (
-            <li key={c.id} className={`plant-row${locked ? ' locked' : ''}`}>
-              <ItemIcon id={c.id} size={40} />
-              <div className="grow">
-                <strong>{it.name}</strong>
-                <span className="muted small">{fmtTime(growMs(c.id, e))}, rende {c.yield} ({fmt(c.yield * it.price)} moedas){c.tool ? ', precisa de foice' : ''}</span>
+            <div key={c.id} className={`plant-card${locked ? ' locked' : ''}`}>
+              <Medal icon={c.id} size={58} tone={locked ? 'esm' : 'folha'} />
+              <strong>{it.name}</strong>
+              <div className="stats">
+                <span>{fmtTime(growMs(c.id, e))}</span>
+                <span>rende {c.yield}</span>
+                <span>{fmt(c.yield * it.price)} moedas</span>
+                {c.tool && <span>foice</span>}
               </div>
-              {locked ? <span className="lock">{locked}</span> : (
-                <div className="col">
-                  <Btn small onClick={() => plant(c.id, false)} disabled={s.farm!.coins < c.seed} testid={`plant-${c.id}`}>Plantar ({c.seed})</Btn>
+              {locked ? <span className="lock"><img src={iconUrl('ui_lock', 32)} width={14} height={14} alt="" />{locked}</span> : (
+                <>
+                  <Btn small onClick={() => plant(c.id, false)} disabled={s.farm!.coins < c.seed} testid={`plant-${c.id}`}>Plantar por {c.seed}</Btn>
                   {empty.length > 1 && <Btn small kind="quiet" onClick={() => plant(c.id, true)} disabled={s.farm!.coins < c.seed * empty.length}>Todos ({empty.length})</Btn>}
-                </div>
+                </>
               )}
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </Sheet>
   );
 }
@@ -231,6 +237,8 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
   const s = useFarm();
   const [muted, setMuted] = useState(sound.muted);
   const [vol, setVol] = useState(sound.volume);
+  const [musicOn, setMusicOn] = useState(sound.musicOn);
+  const [mvol, setMvol] = useState(sound.musicVolume);
   const [pw, setPw] = useState({ cur: '', next: '' });
   const [pwMsg, setPwMsg] = useState('');
   const [editing, setEditing] = useState(false);
@@ -243,7 +251,7 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
   };
   if (editing) return <Sheet title="Aparência" onClose={() => setEditing(false)} wide><CharacterEditor embedded me={me} onSaved={(l) => { onLookChange(l); setEditing(false); toast('Aparência salva.', 'ok'); }} /></Sheet>;
   return (
-    <Sheet title="Ajustes" onClose={onClose}>
+    <Sheet title="Ajustes" subtitle={f.name} icon="ui_gear" onClose={onClose}>
       <section className="panel inset">
         <h3 className="sub">Convide alguém</h3>
         <p className="muted small">Quem entrar com este código passa a cuidar desta mesma fazenda (até 4 membros).</p>
@@ -260,8 +268,10 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
       </section>
       <section className="panel inset">
         <h3 className="sub">Som</h3>
+        <label className="row"><input type="checkbox" checked={musicOn} onChange={(e) => { sound.unlock(); sound.setMusicOn(e.target.checked); setMusicOn(e.target.checked); if (e.target.checked) music.start(); }} /> Trilha sonora do campo</label>
+        <div className="slider"><img src={iconUrl('ui_music', 64)} alt="" /><input type="range" min={0} max={1} step={0.05} value={mvol} onChange={(e) => { sound.setMusicVolume(Number(e.target.value)); setMvol(Number(e.target.value)); }} aria-label="Volume da música" /><span className="small">{Math.round(mvol * 100)}%</span></div>
         <label className="row"><input type="checkbox" checked={!muted} onChange={(e) => { sound.setMuted(!e.target.checked); setMuted(!e.target.checked); }} /> Efeitos sonoros</label>
-        <input type="range" min={0} max={1} step={0.05} value={vol} onChange={(e) => { sound.setVolume(Number(e.target.value)); setVol(Number(e.target.value)); play('click'); }} aria-label="Volume" />
+        <div className="slider"><img src={iconUrl('ui_chat', 64)} alt="" /><input type="range" min={0} max={1} step={0.05} value={vol} onChange={(e) => { sound.setVolume(Number(e.target.value)); setVol(Number(e.target.value)); play('click'); }} aria-label="Volume dos efeitos" /><span className="small">{Math.round(vol * 100)}%</span></div>
       </section>
       <section className="panel inset">
         <h3 className="sub">Conta</h3>
