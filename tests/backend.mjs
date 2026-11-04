@@ -130,16 +130,60 @@ assert.ok(g2.res[1].done, JSON.stringify(g2.res));
 assert.ok(g2.res[1].coop, 'deveria dar bônus de cooperação');
 console.log('✓ projeto coletivo concluído com bônus de cooperação');
 
-// Ferramenta + plantio + falha de colheita antes da hora
-const t1 = await act(a, farm, [{ t: 'quest' }, { t: 'quest' }]);
-console.log('  missões', JSON.stringify(t1.res));
-s2 = (await a.rpc('get_farm_state', { p_farm: farm })).data;
-console.log('  estado', { coins: s2.farm.coins, level: s2.farm.level, xp: s2.farm.xp, inv: s2.inv });
-const pl = await act(b, farm, [{ t: 'plant', e: 'field', i: 0, c: 'wheat' }, { t: 'plant', e: 'field', i: 0, c: 'wheat' }, { t: 'reap', e: 'field', i: 0 }]);
-assert.ok(pl.res[0].ok);
+// Missões principais: objetivo pelo estado real, sem resgate duplo (nem simultâneo)
+assert.equal(st.farm.crystals, 5, 'fazenda nova começa com 5 cristais');
+const m3 = await act(a, farm, [{ t: 'main', m: 'm03' }]);
+assert.equal(m3.res[0].e, 'quest_locked', JSON.stringify(m3.res));
+const m1 = await act(a, farm, [{ t: 'main', m: 'm01' }, { t: 'main', m: 'm01' }]);
+assert.ok(m1.res[0].ok && m1.res[1].e === 'already_unlocked', JSON.stringify(m1.res));
+const [c1, c2] = await Promise.all([act(a, farm, [{ t: 'main', m: 'm02' }]), act(b, farm, [{ t: 'main', m: 'm02' }])]);
+assert.equal([c1.res[0].ok, c2.res[0].ok].filter(Boolean).length, 1, 'missão principal resgatada uma vez só');
+const m3b = await act(a, farm, [{ t: 'main', m: 'm03' }]);
+assert.equal(m3b.res[0].e, 'quest_incomplete');
+console.log('✓ missões principais: pré-requisito, objetivo real e resgate único');
+
+// Missões geradas: secundárias e diárias criadas pelo estado da fazenda
+const mr = await act(a, farm, [{ t: 'mref' }]);
+assert.ok(mr.res[0].ok, JSON.stringify(mr.res));
+const ms = mr.farm.progression.ms;
+assert.equal(ms.side.length, 3); assert.equal(ms.daily.l.length, 3);
+const mc = await act(a, farm, [{ t: 'mclaim', s: 'side', i: 0 }]);
+assert.equal(mc.res[0].e, 'quest_incomplete');
+console.log('✓ missões geradas', ms.side.map((m) => m.k + '×' + m.n).join(', '));
+
+// Campo especializado: só a cultura do campo; canteiro ocupado; colheita antecipada; aceleração com cristal
+const pl = await act(b, farm, [
+  { t: 'plant', e: 'f:wheat', i: 0, c: 'wheat' }, { t: 'plant', e: 'f:wheat', i: 0, c: 'wheat' }, { t: 'reap', e: 'f:wheat', i: 0 },
+  { t: 'plant', e: 'f:wheat', i: 1, c: 'carrot' }, { t: 'plant', e: 'field', i: 0, c: 'wheat' }, { t: 'plant', e: 'f:wheat', i: 3, c: 'wheat' },
+]);
+assert.ok(pl.res[0].ok, JSON.stringify(pl.res));
 assert.equal(pl.res[1].e, 'plot_busy');
 assert.equal(pl.res[2].e, 'not_ready');
-console.log('✓ plantio, canteiro ocupado e colheita antecipada recusados corretamente');
+assert.equal(pl.res[3].e, 'wrong_field');
+assert.equal(pl.res[4].e, 'invalid');
+assert.equal(pl.res[5].e, 'invalid', 'canteiro além do nível do campo');
+const crBefore = pl.farm.crystals;
+const [ru1, ru2] = await Promise.all([act(a, farm, [{ t: 'rush', k: 'plot', e: 'f:wheat', i: 0 }]), act(b, farm, [{ t: 'rush', k: 'plot', e: 'f:wheat', i: 0 }])]);
+assert.equal([ru1.res[0].ok, ru2.res[0].ok].filter(Boolean).length, 1, 'aceleração cobrada uma vez só');
+const rs = (await a.rpc('get_farm_state', { p_farm: farm })).data;
+assert.ok(rs.farm.crystals < crBefore || rs.farm.coins >= 0, 'cobrou');
+const rp = await act(b, farm, [{ t: 'reap', e: 'f:wheat', i: 0 }]);
+assert.ok(rp.res[0].ok, JSON.stringify(rp.res));
+console.log('✓ campo de trigo: cultura certa, canteiros por nível, aceleração única', { cristais: [crBefore, rs.farm.crystals] });
+
+// Loja: requisitos de nível no servidor
+const shop = await act(a, farm, [{ t: 'pet', p: 'owl' }, { t: 'perk', p: 'spd' }, { t: 'fopen', f: 'potato' }, { t: 'give', k: 'r:rio', i: 'coins', q: 1 }, { t: 'give', k: 'o:pontes', i: 'coins', q: 1 }]);
+for (const r of shop.res) assert.ok(!r.ok, JSON.stringify(shop.res));
+console.log('✓ loja, campos e obstáculos respeitam nível/região/ferramenta', shop.res.map((r) => r.e).join(' '));
+
+// Visual pago não liberado volta ao padrão no banco
+const uidB = (await b.auth.getUser()).data.user.id;
+const { error: ge } = await b.from('profiles').update({ character_config: { hat: 4, shoes: 2, body: 1 } }).eq('user_id', uidB);
+assert.ifError(ge);
+const { data: pb, error: pe } = await b.from('profiles').select('character_config').eq('user_id', uidB).single();
+assert.ifError(pe); console.log('  visual salvo', pb);
+assert.equal(pb.character_config.hat, 0); assert.equal(pb.character_config.shoes, 2); assert.equal(pb.character_config.body, 1);
+console.log('✓ cosmético pago bloqueado no servidor; livre mantido');
 
 // Pedido sem itens falha; venda gera moedas
 const ord = await act(a, farm, [{ t: 'order', o: 0 }]);
@@ -151,7 +195,7 @@ console.log('✓ pedido sem itens recusado, venda credita moedas');
 // Membros e perfis visíveis entre colegas
 const { data: profs } = await a.from('profiles').select('username');
 assert.equal(profs.length, 2);
-const { error: lookErr } = await b.from('profiles').update({ character_config: { hair: 2 } }).eq('user_id', (await b.auth.getUser()).data.user.id);
+const { error: lookErr } = await b.from('profiles').update({ character_config: { hair: 2, body: 1 } }).eq('user_id', (await b.auth.getUser()).data.user.id);
 assert.ifError(lookErr);
 console.log('✓ perfis de colegas visíveis e aparência salva');
 

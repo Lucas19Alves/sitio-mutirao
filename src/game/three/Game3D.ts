@@ -993,7 +993,7 @@ export class Game3D {
         o.gone = true; o.tag.on = false;
         continue;
       }
-      o.gone = false;
+      o.gone = false; o.g.visible = true; o.g.scale.setScalar(1);
       o.site.visible = !!info.proj;
       const fr = regionAt(o.def.from.x, o.def.from.y);
       o.tag.on = !!fr && store.hasRegion(fr);
@@ -1044,8 +1044,9 @@ export class Game3D {
 
   // ================================================================ clientes no balcão
   private queueSpot(i: number): [number, number] {
+    // fila em diagonal a partir da frente do balcão, entre o celeiro e a estrada
     const d = doorTile(BUILDING_BY_ID.order_board.spot);
-    return [d.x + 1.5 + i * 0.85, d.y + 0.6];
+    return [d.x + 1.4 + i * 0.8, d.y + 0.8 + i * 0.8];
   }
 
   /** Cada pedido aberto é um cliente na fila; quando é atendido ele agradece e vai embora. */
@@ -1061,17 +1062,16 @@ export class Game3D {
       if (c && c.key !== key) { this.dismiss(c, true); c = undefined; }
       const [qx, qz] = this.queueSpot(i);
       if (!c) {
-        const sx = qx + 7, sz = qz + 1.2;
+        const sx = 28.5, sz = 24.5; // chegam pela estrada
         const av = new Avatar3D(this.eng.scene, this.overlay, sx, sz, `${o.order_key === 'vip' ? '⭐ ' : ''}${o.npc}`, npcLook(o.npc), false);
-        av.tag.el.classList.add('npc');
-        if (o.order_key === 'vip') av.tag.el.classList.add('vip');
+        av.tag.on = false; // o balão do pedido já identifica o cliente
         const tag = this.overlay.tag('', 'w-order', new THREE.Vector3(sx, 0, sz), 2.35);
         c = { slot: o.slot, key, av, tag, state: 'in', tx: qx, tz: qz, t: 0, html: '' };
         this.custs.set(o.slot, c);
       }
       c.tx = qx; c.tz = qz;
       const ok = Object.entries(o.items).every(([it, q]) => store.qty(it) + (bag[it] ?? 0) >= q);
-      const html = `<div class="ord${o.order_key === 'vip' ? ' vip' : ''}${ok ? ' ok' : ''}">${Object.entries(o.items).map(([it, q]) => `<span><img src="${iconUrl(it, 32)}" alt="">${q}</span>`).join('')}<em>🪙${o.reward.coins}${o.reward.cr ? ` 💎${o.reward.cr}` : ''}</em></div>`;
+      const html = `<div class="ord${o.order_key === 'vip' ? ' vip' : ''}${ok ? ' ok' : ''}" title="${escapeHtml(o.npc)}">${o.order_key === 'vip' ? '<b>⭐</b>' : ''}${Object.entries(o.items).map(([it, q]) => `<span><img src="${iconUrl(it, 32)}" alt="">${q}</span>`).join('')}<em>🪙${o.reward.coins}${o.reward.cr ? ` 💎${o.reward.cr}` : ''}</em></div>`;
       if (c.html !== html) { c.html = html; c.tag.el.innerHTML = html; }
       c.tag.on = c.state === 'in' && Math.hypot(c.av.x - qx, c.av.z - qz) < 0.4;
     });
@@ -1081,7 +1081,7 @@ export class Game3D {
   private dismiss(c: Cust, thanked: boolean) {
     this.custs.delete(c.slot);
     c.state = 'out'; c.tag.on = false; c.t = thanked ? 1.0 : 0;
-    c.tx = c.av.x + 9; c.tz = c.av.z + 1.5;
+    c.tx = 46; c.tz = 24.6; // vão embora pela estrada
     if (thanked) {
       c.av.play('celebrate');
       this.overlay.float('😊 Obrigado!', c.av.pos.clone().setY(2.2), 'w-float big');
