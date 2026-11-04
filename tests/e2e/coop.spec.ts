@@ -7,8 +7,8 @@ const A = `coop_a_${tag}`;
 const B = `coop_b_${tag}`;
 
 type Hook = {
-  store: { farm: { id: string; coins: number; level: number; xp: number; invite_code: string; progression: { quest: number; regions: string[] } }; inv: Record<string, number>; ents: Record<string, { level: number }>; connected: boolean; online: Set<string>; act: (a: unknown) => Promise<{ ok: boolean; e?: string }> };
-  scene: { me: { lx: number; ly: number }; interact: (t: unknown) => void };
+  store: { farm: { id: string; coins: number; level: number; xp: number; invite_code: string; progression: { quest: number; regions: string[] } }; inv: Record<string, number>; ents: Record<string, { level: number }>; connected: boolean; online: Set<string>; act: (a: unknown) => Promise<{ ok: boolean; e?: string }>; bagUsed: () => number };
+  scene: { me: { lx: number; ly: number }; interact: (t: unknown) => void; zone: { k: string; id?: string } | null };
   remotes: () => { u: string; x: number; y: number }[];
 };
 const hook = (p: Page) => p.evaluate(() => !!(window as unknown as { __mutirao?: Hook }).__mutirao);
@@ -41,6 +41,7 @@ async function waitGame(p: Page) {
 }
 
 test('cooperativo com dois jogadores reais', async ({ browser }) => {
+  test.setTimeout(480_000); // dois mundos 3D em navegadores sem GPU
   const errors: string[] = [];
   const ctxA: BrowserContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const ctxB: BrowserContext = await browser.newContext({ ...devices['iPhone 13'] });
@@ -79,7 +80,7 @@ test('cooperativo com dois jogadores reais', async ({ browser }) => {
   await expect.poll(async () => { const r = await st(pb, (h) => h.remotes()[0]); return Math.hypot(r.x - before.x, r.y - before.y); }, { timeout: 10_000 }).toBeGreaterThan(40);
   await expect.poll(async () => { const r = await st(pb, (h) => h.remotes()[0]); return Math.hypot(r.x - meA.x, r.y - meA.y); }, { timeout: 10_000 }).toBeLessThan(8);
 
-  // 7. coleta simultânea: cada um corta árvores diferentes pela interação real do jogo
+  // 7. coleta automática por proximidade: cada um anda até uma árvore e corta sozinho (sem tecla de ação)
   const trees = await pa.evaluate(async () => {
     const mod = '/src/data/world.ts';
     const { WORLD_NODES } = await import(/* @vite-ignore */ mod);
@@ -91,17 +92,29 @@ test('cooperativo com dois jogadores reais', async ({ browser }) => {
     await p.evaluate((i) => { const w = window as unknown as { __mutirao: Hook; __t: string[] }; w.__mutirao.scene.interact({ kind: 'node', id: w.__t[i] }); }, idx);
   };
   await Promise.all([harvest(pa, 0), harvest(pb, 1)]);
+  // a madeira vai para a mochila de cada um, não direto para o estoque
+  await expect.poll(() => st(pa, (h) => h.store.bagUsed()), { timeout: 40_000 }).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => st(pb, (h) => h.store.bagUsed()), { timeout: 40_000 }).toBeGreaterThanOrEqual(2);
+  expect(await st(pa, (h) => h.store.inv.wood ?? 0)).toBe(4);
+  // cada um caminha até o Celeiro: o depósito acontece ao chegar perto (e o painel abre sozinho)
+  for (const p of [pa, pb]) await p.evaluate(() => (window as unknown as { __mutirao: Hook }).__mutirao.scene.interact({ kind: 'building', id: 'barn' }));
+  await expect.poll(() => st(pa, (h) => h.scene.zone?.id ?? ''), { timeout: 30_000 }).toBe('barn');
+  await expect(pa.getByTestId('ctx-panel').locator('.sheet')).toBeVisible();
   await expect.poll(() => st(pa, (h) => h.store.inv.wood ?? 0), { timeout: 40_000 }).toBeGreaterThanOrEqual(4 + 4);
+  await expect.poll(() => st(pb, (h) => h.store.bagUsed()), { timeout: 40_000 }).toBe(0);
   // mesmo nó ao mesmo tempo: só um ganha
   const race = await Promise.all([
     pa.evaluate(() => { const w = window as unknown as { __mutirao: Hook; __t: string[] }; return w.__mutirao.store.act({ t: 'harvest', n: w.__t[2] }); }),
     pb.evaluate(() => { const w = window as unknown as { __mutirao: Hook; __t: string[] }; return w.__mutirao.store.act({ t: 'harvest', n: w.__t[2] }); }),
   ]);
   expect(race.filter((r) => r.ok).length).toBe(1);
+  // quem ganhou guarda no celeiro (ação validada no servidor)
+  await Promise.all([pa, pb].map((p) => p.evaluate(() => (window as unknown as { __mutirao: Hook }).__mutirao.store.act({ t: 'deposit' }))));
   // 8. inventário compartilhado idêntico nos dois clientes
   await expect.poll(async () => JSON.stringify(await st(pb, (h) => h.store.inv))).toBe(JSON.stringify(await st(pa, (h) => h.store.inv)));
   const wood = await st(pa, (h) => h.store.inv.wood);
-  expect(wood).toBe(4 + 2 + 2 + 2);
+  expect(wood).toBeGreaterThanOrEqual(4 + 2 + 2 + 2);
+  expect(await st(pa, (h) => h.store.bagUsed()) + await st(pb, (h) => h.store.bagUsed())).toBe(0);
 
   // 9. venda pela interface (A no desktop) e saldo compartilhado
   const coins0 = await st(pb, (h) => h.store.farm.coins);

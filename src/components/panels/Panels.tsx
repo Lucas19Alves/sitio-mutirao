@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
-  ITEMS, ITEM_BY_ID, RECIPES, CROPS, TOOLS, BUILDING_BY_ID, REGION_BY_ID, type ItemCat,
+  ITEMS, ITEM_BY_ID, RECIPES, CROPS, TOOLS, BUILDING_BY_ID, REGION_BY_ID, CONFIG, WORKERS, workerPeriodMs, type ItemCat,
 } from '../../data/catalog.ts';
 import { useFarm } from '../../hooks/useStore.ts';
 import { store } from '../../game/state/store.ts';
@@ -35,9 +35,11 @@ const CAT_LABEL: Record<ItemCat, string> = { raw: 'Recursos', fruit: 'Frutas', c
 
 export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: PanelId; onClose: () => void; me: Me; onExit: () => void; onLookChange: (l: Look) => void }) {
   if (typeof panel === 'object' && 'b' in panel) {
-    if (panel.b === 'sales_cart') return <SellPanel onClose={onClose} />;
+    if (panel.b === 'sales_cart' || panel.b === 'market') return <SellPanel onClose={onClose} atMarket />;
     if (panel.b === 'order_board') return <OrdersPanel onClose={onClose} />;
-    if (panel.b === 'barn') return <InventoryPanel onClose={onClose} />;
+    if (panel.b === 'barn' || panel.b === 'warehouse') return <InventoryPanel onClose={onClose} atStorage />;
+    if (panel.b === 'farmhouse') return <HomePanel onClose={onClose} />;
+    if (panel.b === 'toolshed') return <ToolsPanel onClose={onClose} />;
     return <BuildingPanel id={panel.b} onClose={onClose} />;
   }
   if (typeof panel === 'object' && 'plant' in panel) return <PlantPanel e={panel.plant} i={panel.i} onClose={onClose} />;
@@ -55,7 +57,7 @@ export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: Pa
 }
 
 // ---------------------------------------------------------------- estoque
-function InventoryPanel({ onClose }: { onClose: () => void }) {
+function InventoryPanel({ onClose, atStorage }: { onClose: () => void; atStorage?: boolean }) {
   const s = useFarm();
   const [sel, setSel] = useState<string | null>(null);
   const used = s.invTotal(), cap = capacity();
@@ -68,6 +70,7 @@ function InventoryPanel({ onClose }: { onClose: () => void }) {
   const usedIn = sel ? RECIPES.filter((r) => r.in[sel]) : [];
   return (
     <Sheet title="Estoque da fazenda" subtitle="Compartilhado por todos os membros" icon="ui_bag" onClose={onClose}>
+      <BagSection mode={atStorage ? 'deposit' : 'view'} />
       <div className="cap-row"><span>Celeiro {used}/{cap}</span><Bar value={used} max={cap} tone={used >= cap ? 'chita' : 'folha'} /></div>
       <p className="muted small">Tudo aqui é de todos os membros. Melhore o Celeiro ou construa o Armazém para guardar mais.</p>
       {used === 0 && <div className="empty"><img src={iconUrl('ui_bag', 96)} alt="" />Estoque vazio. Corte árvores e colha capim para começar.</div>}
@@ -95,7 +98,7 @@ function InventoryPanel({ onClose }: { onClose: () => void }) {
 }
 
 // ---------------------------------------------------------------- vender
-function SellPanel({ onClose }: { onClose: () => void }) {
+function SellPanel({ onClose, atMarket }: { onClose: () => void; atMarket?: boolean }) {
   const s = useFarm();
   const [tab, setTab] = useState<'sell' | 'prices'>('sell');
   const [qty, setQty] = useState<Record<string, number>>({});
@@ -117,6 +120,7 @@ function SellPanel({ onClose }: { onClose: () => void }) {
         <button className={tab === 'sell' ? 'on' : ''} onClick={() => setTab('sell')}>Vender</button>
         <button className={tab === 'prices' ? 'on' : ''} onClick={() => setTab('prices')}>Lucratividade</button>
       </div>
+      {tab === 'sell' && <BagSection mode={atMarket ? 'sell' : 'view'} />}
       {bonus > 0 && <p className="note">O Mercado está pagando +{Math.round(bonus * 100)}% em tudo.</p>}
       {tab === 'sell' ? (
         stock.length === 0 ? <div className="empty"><img src={iconUrl('ui_coins', 96)} alt="" />Nada para vender ainda. Colete recursos pelo mapa.</div> : (
@@ -153,6 +157,87 @@ function SellPanel({ onClose }: { onClose: () => void }) {
           </table>
         </>
       )}
+    </Sheet>
+  );
+}
+
+// ---------------------------------------------------------------- mochila
+/** O que está na mochila do jogador; no celeiro descarrega, no mercado vende direto. */
+function BagSection({ mode }: { mode: 'view' | 'deposit' | 'sell' }) {
+  const s = useFarm();
+  const bag = s.bag(), used = s.bagUsed(), cap = s.bagCap();
+  const ids = Object.keys(bag).filter((k) => bag[k] > 0).sort((a, b) => bag[b] * ITEM_BY_ID[b].price - bag[a] * ITEM_BY_ID[a].price);
+  const bonus = marketBonus();
+  const worth = ids.reduce((a, k) => a + Math.floor(ITEM_BY_ID[k].price * bag[k] * (1 + bonus)), 0);
+  const sellAll = async () => {
+    let g = 0;
+    for (const k of ids) { const r = await act({ t: 'sell', i: k, q: bag[k], src: 'bag' }); if (r.ok) g += Number(r.g); }
+    if (g) { play('coin'); bus.emit('pose', 'sell'); toast(`Mochila vendida por ${fmt(g)} moedas.`, 'ok'); }
+  };
+  const deposit = async () => { const r = await act({ t: 'deposit' }); if (r.ok) { play('coin'); toast(`${r.q} itens guardados no celeiro.`, 'ok'); } };
+  return (
+    <section className="bag-sec" data-testid="bag-section">
+      <div className="cap-row"><span>🎒 Mochila {used}/{cap}</span><Bar value={used} max={cap} tone={used >= cap ? 'chita' : 'ipe'} /></div>
+      {ids.length === 0 ? <p className="muted small">{mode === 'sell' ? 'Mochila vazia. Colete e venda aqui, ou venda do estoque abaixo.' : 'Mochila vazia. Chegue perto de árvores, pedras e plantações para coletar.'}</p> : (
+        <>
+          <div className="bag-row">{ids.map((k) => <span key={k} className="bag-item" title={ITEM_BY_ID[k].name}><ItemIcon id={k} size={30} /><b>{bag[k]}</b></span>)}</div>
+          {mode === 'deposit' && <Btn small onClick={deposit} testid="bag-deposit">Guardar tudo no celeiro</Btn>}
+          {mode === 'sell' && <Btn small onClick={sellAll} testid="bag-sell">Vender a mochila por {fmt(worth)}</Btn>}
+        </>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- casa da fazenda: mochila e ajudantes
+function HomePanel({ onClose }: { onClose: () => void }) {
+  const s = useFarm();
+  const tier = s.bagTier();
+  const up = CONFIG.bagUp[tier];
+  const lv = level();
+  const ws = s.ents.workers?.state.w ?? {};
+  return (
+    <Sheet title="Casa da Fazenda" subtitle="Mochila, ajudantes e melhorias" icon="ui_people" onClose={onClose}>
+      <section className="panel inset">
+        <h3 className="sub">Sua mochila: {CONFIG.bagCap[tier]} itens</h3>
+        {up ? (
+          <>
+            <p className="muted small">Próximo tamanho: <strong>{CONFIG.bagCap[tier + 1]} itens</strong>. Cada jogador melhora a sua.</p>
+            <CostList cost={{ coins: up.coins, items: up.items }} />
+            <Btn small disabled={lv < up.level || !canAfford({ coins: up.coins, items: up.items })} onClick={() => act({ t: 'bag' }, 'Mochila maior!').then((r) => r.ok && play('build'))} testid="bag-up">
+              {lv < up.level ? `Nível ${up.level}` : canAfford({ coins: up.coins, items: up.items }) ? 'Melhorar mochila' : 'Faltam materiais'}
+            </Btn>
+          </>
+        ) : <p className="note">Mochila no tamanho máximo.</p>}
+      </section>
+      <Section title="Ajudantes">
+        <p className="muted small">Moradores contratados trabalham sozinhos e levam o que produzem ao celeiro, mesmo quando ninguém está jogando.</p>
+        <ul className="list">
+          {WORKERS.map((w) => {
+            const cur = ws[w.id]?.lv ?? 0;
+            const cost = w.costs[cur];
+            const locked = lv < w.level ? `Nível ${w.level}` : !s.hasRegion(w.region) ? `Região ${REGION_BY_ID[w.region].name}` : null;
+            const per = workerPeriodMs(w, Math.max(1, cur)) / 1000;
+            return (
+              <li key={w.id} className="panel worker" data-testid={`worker-${w.id}`}>
+                <div className="row"><Medal icon={w.item} size={46} tone={cur ? 'folha' : 'esm'} /><div className="grow"><strong>{w.name}</strong><span className="muted small">{w.role} · {cur ? `nível ${cur}, ` : ''}1 {ITEM_BY_ID[w.item].name.toLowerCase()} a cada {Math.round(per)}s (guarda até {w.cap})</span></div></div>
+                {cost ? (
+                  <>
+                    <CostList cost={cost} />
+                    <Btn small disabled={!!locked || !canAfford(cost)} onClick={() => act({ t: 'hire', w: w.id }, cur ? `${w.name} trabalha mais rápido!` : `${w.name} começou a trabalhar!`).then((r) => r.ok && play('build'))} testid={`hire-${w.id}`}>
+                      {locked ?? (canAfford(cost) ? (cur ? 'Treinar' : 'Contratar') : 'Faltam materiais')}
+                    </Btn>
+                  </>
+                ) : <p className="note">No nível máximo.</p>}
+              </li>
+            );
+          })}
+        </ul>
+      </Section>
+      <div className="row wrap">
+        <Btn small kind="ghost" onClick={() => { bus.emit('panel', 'projects'); setTimeout(() => bus.emit('projects:focus', 'b:farmhouse'), 30); }}>Melhorar a casa</Btn>
+        <Btn small kind="ghost" onClick={() => bus.emit('panel', 'character')}>Mudar aparência</Btn>
+      </div>
     </Sheet>
   );
 }
@@ -194,24 +279,26 @@ function ToolsPanel({ onClose }: { onClose: () => void }) {
 // ---------------------------------------------------------------- plantar
 export function PlantPanel({ e, i, onClose }: { e: string; i: number; onClose: () => void }) {
   const s = useFarm();
+  const seed = useSyncExternalStore(subscribeSeed, () => currentSeed);
+  const auto = i < 0;
   const lv = level();
   const empty = Array.from({ length: plotCount(e) }, (_, k) => k).filter((k) => !s.ents[e]?.state.p?.[k]);
   const plant = async (c: string, all: boolean) => {
     const targets = all ? empty : [i];
     const rs = await Promise.all(targets.map((k) => store.act({ t: 'plant', e, i: k, c })));
     const ok = rs.filter((r) => r.ok).length;
-    if (ok) { play('pop'); toast(`${ok} ${ok === 1 ? 'canteiro plantado' : 'canteiros plantados'} com ${ITEM_BY_ID[c].name}.`, 'ok'); onClose(); }
+    if (ok) { play('pop'); toast(`${ok} ${ok === 1 ? 'canteiro plantado' : 'canteiros plantados'} com ${ITEM_BY_ID[c].name}.`, 'ok'); if (!auto) onClose(); }
     const bad = rs.find((r) => !r.ok);
     if (bad) toast(errorText(bad.e), 'warn');
   };
   return (
-    <Sheet title={e === 'greenhouse' ? 'Plantar na estufa' : 'O que plantar?'} subtitle={`${empty.length} canteiros livres`} icon="wheat" onClose={onClose}>
+    <Sheet title={e === 'greenhouse' ? 'Plantar na estufa' : auto ? 'Campo' : 'O que plantar?'} subtitle={auto ? (seed ? `Plantio automático: ${ITEM_BY_ID[seed]?.name}. Ande pelos canteiros.` : 'Escolha a semente; plantio e colheita acontecem ao andar pelos canteiros.') : `${empty.length} canteiros livres`} icon="wheat" onClose={onClose}>
       <div className="plant-grid">
         {CROPS.map((c) => {
           const locked = lv < c.level ? `Nível ${c.level}` : c.region && !s.hasRegion(c.region) ? `Região ${REGION_BY_ID[c.region].name}` : null;
           const it = ITEM_BY_ID[c.id];
           return (
-            <div key={c.id} className={`plant-card${locked ? ' locked' : ''}`}>
+            <div key={c.id} className={`plant-card${locked ? ' locked' : ''}${auto && seed === c.id ? ' on' : ''}`}>
               <Medal icon={c.id} size={58} tone={locked ? 'esm' : 'folha'} />
               <strong>{it.name}</strong>
               <div className="stats">
@@ -222,7 +309,8 @@ export function PlantPanel({ e, i, onClose }: { e: string; i: number; onClose: (
               </div>
               {locked ? <span className="lock"><img src={iconUrl('ui_lock', 32)} width={14} height={14} alt="" />{locked}</span> : (
                 <>
-                  <Btn small onClick={() => plant(c.id, false)} disabled={s.farm!.coins < c.seed} testid={`plant-${c.id}`}>Plantar por {c.seed}</Btn>
+                  {auto ? <Btn small kind={seed === c.id ? 'primary' : 'ghost'} onClick={() => { setSeed(seed === c.id ? '' : c.id); play('click'); }} testid={`seed-${c.id}`}>{seed === c.id ? 'Selecionada' : `Usar (${c.seed} cada)`}</Btn>
+                    : <Btn small onClick={() => plant(c.id, false)} disabled={s.farm!.coins < c.seed} testid={`plant-${c.id}`}>Plantar por {c.seed}</Btn>}
                   {empty.length > 1 && <Btn small kind="quiet" onClick={() => plant(c.id, true)} disabled={s.farm!.coins < c.seed * empty.length}>Todos ({empty.length})</Btn>}
                 </>
               )}
@@ -306,3 +394,9 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
     </Sheet>
   );
 }
+
+// semente escolhida para o plantio automático (o mundo 3D recebe pelo barramento)
+let currentSeed = (() => { try { return localStorage.getItem('sm-seed') ?? ''; } catch { return ''; } })();
+const seedSubs = new Set<() => void>();
+function subscribeSeed(f: () => void) { seedSubs.add(f); return () => { seedSubs.delete(f); }; }
+function setSeed(c: string) { currentSeed = c; try { localStorage.setItem('sm-seed', c); } catch { /* sem storage */ } bus.emit('seed', c); seedSubs.forEach((f) => f()); }

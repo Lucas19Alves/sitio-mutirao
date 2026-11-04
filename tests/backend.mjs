@@ -77,9 +77,36 @@ await Promise.all([
   act(b, farm, grass.slice(0, 5).map((n) => ({ t: 'harvest', n: n.id }))),
 ]);
 let s2 = (await a.rpc('get_farm_state', { p_farm: farm })).data;
+const bagOf = (st, who) => st.members.find((m) => m.username === who).bag;
+// a coleta enche a mochila de cada um; o estoque compartilhado só muda no depósito
+assert.equal(s2.inv.wood, 4);
+assert.equal((bagOf(s2, `ta_${tag}`).wood ?? 0) + (bagOf(s2, `tb_${tag}`).wood ?? 0), 2 + 8);
+assert.equal(bagOf(s2, `tb_${tag}`).fiber, 10);
+console.log('✓ coleta simultânea de nós diferentes vai para a mochila de cada um');
+
+// depósito no celeiro: mochila → estoque compartilhado
+const [da, db] = await Promise.all([act(a, farm, [{ t: 'deposit' }]), act(b, farm, [{ t: 'deposit' }])]);
+assert.ok(da.res[0].ok && db.res[0].ok, JSON.stringify([da.res, db.res]));
+assert.equal(da.member.bag && Object.keys(da.member.bag).length, 0);
+const dep2 = await act(a, farm, [{ t: 'deposit' }]);
+assert.equal(dep2.res[0].e, 'bag_empty');
+s2 = (await a.rpc('get_farm_state', { p_farm: farm })).data;
 assert.equal(s2.inv.wood, 4 + 2 + 8);
 assert.equal(s2.inv.fiber, 10);
-console.log('✓ coleta simultânea de nós diferentes', s2.inv);
+console.log('✓ depósito no celeiro (mochila vazia recusada)', s2.inv);
+
+// mochila cheia: capacidade 50 recusa a coleta seguinte
+const many = WORLD_NODES.filter((n) => n.r === 'sitio' && n.t === 'grass').slice(5, 19);
+const full = await act(a, farm, many.map((n) => ({ t: 'harvest', n: n.id })));
+const got = full.res.filter((r) => r.ok).reduce((n, r) => n + r.q, 0);
+assert.ok(got <= 50, 'mochila não passa da capacidade');
+// vende 4 direto da mochila e devolve o resto ao estoque
+const sb4 = await act(a, farm, [{ t: 'sell', i: 'fiber', q: 4, src: 'bag' }, { t: 'deposit' }]);
+assert.ok(sb4.res[0].ok && sb4.res[0].g === 8 && sb4.res[1].ok, JSON.stringify(sb4.res));
+s2 = (await a.rpc('get_farm_state', { p_farm: farm })).data;
+assert.equal(s2.inv.fiber, 10 + got - 4);
+await act(a, farm, [{ t: 'sell', i: 'fiber', q: got - 4 }]);
+console.log('✓ mochila com limite, venda direto da mochila', got);
 
 // Idempotência: mesmo batch reenviado não aplica duas vezes
 const batch = randomUUID();

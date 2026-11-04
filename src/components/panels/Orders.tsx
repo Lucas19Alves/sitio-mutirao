@@ -6,10 +6,11 @@ import { Sheet, ItemIcon, Btn, Bar, Coins, toast } from '../ui.tsx';
 import { act } from './Panels.tsx';
 import { fmt } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
-import { npcPortrait } from '../../game/art/portraits.ts';
+import { npcPortrait, useThumbs } from '../../game/art/portraits.ts';
 
 export function OrdersPanel({ onClose }: { onClose: () => void }) {
   const s = useFarm();
+  useThumbs();
   const slots = boardSlots();
   const orders = Object.values(s.orders).filter((o) => o.slot < slots).sort((a, b) => a.slot - b.slot);
   const contract = s.orders[99];

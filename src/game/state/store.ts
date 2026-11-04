@@ -3,6 +3,7 @@
 // As ações são enfileiradas e enviadas em lotes para economizar requisições.
 import { supabase } from '../../services/supabase.ts';
 import { bus } from '../bus.ts';
+import { CONFIG } from '../../data/progression.ts';
 
 export interface Progression {
   regions: string[];
@@ -16,10 +17,10 @@ export interface FarmRow {
   level: number; xp: number; coins: number; reputation: number; rev: number;
   progression: Progression; nodes: Record<string, number>;
 }
-export interface Ent { k: string; kind: string; level: number; state: { p?: ([string, number] | null)[]; q?: [string, number][]; proj?: Project } }
+export interface Ent { k: string; kind: string; level: number; state: { p?: ([string, number] | null)[]; q?: [string, number][]; proj?: Project; w?: Record<string, { lv: number; at: number }> } }
 export interface Project { k: string; need: { coins?: number; items?: Record<string, number> }; got: Record<string, number>; by: Record<string, number>; at: number }
 export interface Order { slot: number; order_key: string; npc: string; items: Record<string, number>; reward: { coins: number; xp: number; rep: number; level?: number }; progress: { got?: Record<string, number>; by?: Record<string, number> }; status: string }
-export interface Member { user_id: string; username: string; role: string; stats: Record<string, number>; look: Record<string, number>; joined_at: string }
+export interface Member { user_id: string; username: string; role: string; stats: Record<string, number>; look: Record<string, number>; joined_at: string; bag?: Record<string, number>; bag_tier?: number }
 
 export type Action =
   | { t: 'harvest'; n: string }
@@ -27,7 +28,11 @@ export type Action =
   | { t: 'reap'; e: string; i: number }
   | { t: 'craft'; b: string; r: string }
   | { t: 'collect'; b: string }
-  | { t: 'sell'; i: string; q: number }
+  | { t: 'sell'; i: string; q: number; src?: 'bag' }
+  | { t: 'deposit'; i?: string }
+  | { t: 'bag' }
+  | { t: 'hire'; w: string }
+  | { t: 'wclaim' }
   | { t: 'tool'; tool: string }
   | { t: 'give'; k: string; i: string; q: number }
   | { t: 'order'; o: number }
@@ -43,7 +48,7 @@ interface Delta {
   rev: number; by: string; now: number;
   farm: Omit<FarmRow, 'id' | 'name' | 'owner_id' | 'invite_code' | 'rev'>;
   inv: Record<string, number>; ents: Ent[]; gone: string[]; orders: Order[];
-  member?: { user_id: string; stats: Record<string, number> };
+  member?: { user_id: string; stats: Record<string, number>; bag?: Record<string, number>; bag_tier?: number };
   res?: ActResult[]; dup?: boolean; noop?: boolean;
 }
 
@@ -61,6 +66,10 @@ class FarmStore {
   connected = false;
   syncing = false;
   version = 0;
+  /** usuário local (para a mochila) */
+  myId = '';
+  /** coletas a caminho do servidor, já mostradas na mochila */
+  private pend: Record<string, number> = {};
 
   private queue: Pending[] = [];
   private inflight: { batch: string; items: Pending[] } | null = null;
@@ -121,7 +130,7 @@ class FarmStore {
     for (const o of d.orders) this.orders[o.slot] = o;
     if (d.member) {
       const m = this.members.find((x) => x.user_id === d.member!.user_id);
-      if (m) m.stats = d.member.stats;
+      if (m) { m.stats = d.member.stats; if (d.member.bag) m.bag = d.member.bag; if (d.member.bag_tier !== undefined) m.bag_tier = d.member.bag_tier; }
     }
     this.emit();
     bus.emit('state:delta', { by: d.by, ents: d.ents.map((e) => e.k).concat(d.gone), nodes: true });
@@ -187,7 +196,29 @@ class FarmStore {
     if (this.queue.length) this.schedule(0);
   }
 
+  /** Coleta que vai para a mochila: aparece na hora e se ajusta quando o servidor responde. */
+  gather(a: Action, item: string, q: number): Promise<ActResult> {
+    this.pend[item] = (this.pend[item] ?? 0) + q;
+    this.emit();
+    return this.act(a).then((r) => {
+      this.pend[item] -= q;
+      if (this.pend[item] <= 0) delete this.pend[item];
+      this.emit();
+      return r;
+    });
+  }
+
   // ---------------------------------------------------------------- seletores
+  me = () => this.members.find((m) => m.user_id === this.myId);
+  /** Mochila do jogador local, incluindo coletas ainda não confirmadas. */
+  bag = (): Record<string, number> => {
+    const out = { ...(this.me()?.bag ?? {}) };
+    for (const [k, v] of Object.entries(this.pend)) out[k] = (out[k] ?? 0) + v;
+    return out;
+  };
+  bagUsed = () => Object.values(this.bag()).reduce((a, b) => a + b, 0);
+  bagTier = () => this.me()?.bag_tier ?? 0;
+  bagCap = () => CONFIG.bagCap[Math.min(this.bagTier(), CONFIG.bagCap.length - 1)];
   get progression() { return this.farm?.progression; }
   hasRegion = (r: string) => !!this.farm?.progression.regions.includes(r);
   lvl = (k: string) => this.ents[k]?.level ?? 0;

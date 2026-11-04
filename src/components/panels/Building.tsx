@@ -6,7 +6,7 @@ import { Sheet, ItemIcon, Btn, CostList, Ring, Section, toast } from '../ui.tsx'
 import { act } from './Panels.tsx';
 import { fmtTime } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
-import { buildingPortrait } from '../../game/art/portraits.ts';
+import { buildingPortrait, useThumbs } from '../../game/art/portraits.ts';
 import { iconUrl } from '../../game/art/icons.ts';
 
 function Greenhouse() {
@@ -39,6 +39,7 @@ function Greenhouse() {
 
 export function BuildingPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const s = useFarm();
+  useThumbs();
   useTicker(1000);
   const b = BUILDING_BY_ID[id];
   const lvl = s.lvl(id);

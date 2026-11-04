@@ -55,6 +55,16 @@ Desktop: WASD/setas, clique, roda para zoom, `E`/espaço para interagir, `Esc` f
 - Nenhuma migration, tabela, política RLS ou RPC foi alterada; nenhuma dependência atualizada.
 - QA: `tests/e2e/viewports.mjs` abre a fazenda em 320×640, 360×800, 390×844, 430×932, 768×1024, 1366×768, 1920×1080 e 844×390 (paisagem), tira prints do mundo e de um painel e acusa rolagem horizontal ou HUD fora da tela (todas ok); `tests/e2e/contact.mjs` gera pranchas de contato da arte; E2E cooperativo e testes de backend passando.
 
+## Versão 1.0: 3D real e jogabilidade automática
+
+- **Motor**: Phaser saiu; o mundo é Three.js (`src/game/three/`). Um único laço de renderização, `PerspectiveCamera` elevada seguindo o jogador com suavização, zoom (roda, pinça, botões) e limites do mapa.
+- **Modelos 3D procedurais** (`kit/`): personagens com `SkinnedMesh` e 19 ossos (aparência salva no Supabase: pele, 6 cabelos, roupas, 6 chapéus, acessórios), 15 clipes (parado, andar, correr, cortar, minerar, cavar, colher, plantar, pegar, carregar, depositar, vender, construir, comemorar, interagir) com crossfade; 25 prédios + obra + lote; 19 tipos de nó com versão "esgotada"; 13 cultivos × 5 estágios; decoração.
+- **Ciclo automático**: alvo escolhido por proximidade (à frente > perto > tocado), com raio de alcance, saída com tolerância, validação de ferramenta e de mochila; passar correndo por perto não dispara trabalho. Golpes sincronizados ao momento de impacto da animação, lascas, folhas, itens 3D que saltam e voam até a mochila.
+- **Backend (migration 6)**: `farm_members.bag` e `bag_tier`; coleta e colheita enchem a mochila (`bag_full`); ações `deposit`, `sell` com `src: 'bag'`, `bag` (mochila maior) e `hire`/`wclaim` (ajudantes por tempo). Tudo dentro do `farm_act` com lock por fazenda: sem duplicação entre jogadores.
+- **Painéis por proximidade**: raio de entrada 1,55 e de saída 2,35 tiles, fechamento após 650 ms fora; trocar de prédio troca o painel; fechar no X não reabre até sair da área; menus globais abertos pelo jogador têm prioridade. No celular o painel fica no topo e a câmera desloca o personagem para baixo; o joystick continua disponível.
+- **Desempenho**: decoração instanciada em blocos de 12×12 tiles (culling), árvores decorativas mais leves, área de sombra do tamanho da visão, celulares começam na qualidade Média. Medido no celular (390×844, Média): **135 draw calls, ~530 mil triângulos, 60 fps**; antes das otimizações eram 3 milhões de triângulos. Triângulos ainda acima da referência de 300 mil para celular: o custo vem das sombras de árvores e prédios próximos; a qualidade Leve desliga sombras.
+- **QA**: E2E com dois navegadores reais passou (cadastro, convite, movimento sincronizado, corte automático, mochila, depósito no celeiro com painel abrindo sozinho, disputa do mesmo nó, venda, obra coletiva, missões, reconexão, persistência); `test:backend` com os novos casos de mochila; `viewports.mjs` em 8 resoluções sem rolagem nem HUD cortada; `play3d.mjs` joga com entrada real e mede o renderer.
+
 ## O que foi verificado (e como)
 
 | # | Cenário | Verificação |

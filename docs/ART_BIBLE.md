@@ -1,4 +1,6 @@
-# Bíblia visual — Sítio Mutirão v0.3
+# Bíblia visual — Sítio Mutirão
+
+> **v1.0:** o mundo agora é 3D (Three.js). Paleta, luz do topo-esquerda, cores por região e a interface continuam valendo; câmera e modelos estão descritos em [3D_PLAN.md](3D_PLAN.md). As seções sobre sprites 2D abaixo são histórico da v0.3.
 
 ## Câmera e perspectiva
 - **Top-down ortográfico.** Eixos X/Y alinhados à tela, grade retangular de 32 px de mundo por tile. Nada de losangos nem rotação do mapa.

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { signIn, signUp, validatePassword, validateUsername } from '../services/auth.ts';
-import { dioramaUrl } from '../game/art/portraits.ts';
+import { dioramaUrl, useThumbs } from '../game/art/portraits.ts';
 import { iconUrl } from '../game/art/icons.ts';
 import { sound } from '../game/audio.ts';
 
 function Diorama() {
-  const [src] = useState(() => dioramaUrl());
-  return <div className="diorama" aria-hidden><img src={src} alt="" /></div>;
+  useThumbs();
+  const src = dioramaUrl();
+  return <div className={`diorama${src.startsWith('data:image/gif') ? ' loading-3d' : ''}`} aria-hidden><img src={src} alt="" /></div>;
 }
 
 export function AuthScreen({ onDone }: { onDone: (s: Session) => void }) {

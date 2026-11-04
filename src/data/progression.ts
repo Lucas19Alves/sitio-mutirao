@@ -107,4 +107,14 @@ export const CONFIG = {
   coopProjectXp: 0.25,
   coopContractBonus: 0.3,
   maxMembers: 4,
+  /** Mochila de cada jogador: capacidade por tamanho (0 = inicial). */
+  bagCap: [50, 80, 120, 170, 240, 320],
+  /** Custo para passar ao tamanho n (índice n-1). */
+  bagUp: [
+    { level: 2, coins: 80, items: { rope: 3 } },
+    { level: 5, coins: 250, items: { basket: 2, rope: 4 } },
+    { level: 9, coins: 700, items: { sack: 3, cloth: 2 } },
+    { level: 14, coins: 1800, items: { cloth: 6, nails: 10 } },
+    { level: 20, coins: 4500, items: { cloth: 12, metal_parts: 4 } },
+  ] as { level: number; coins: number; items: Record<string, number> }[],
 };

@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 const url = process.argv[2] ?? 'http://localhost:5173/';
 const acc = JSON.parse(readFileSync(new URL('../../.showcase.json', import.meta.url), 'utf8'));
 const SIZES = [[320, 640], [360, 800], [390, 844], [430, 932], [768, 1024], [1366, 768], [1920, 1080], [844, 390]];
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--enable-gpu', '--ignore-gpu-blocklist'] });
 let bad = 0;
 for (const [w, h] of SIZES) {
   const touch = w < 800 || h < 500;
@@ -21,7 +21,8 @@ for (const [w, h] of SIZES) {
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
   await p.getByTestId('farm-row').first().click();
   await p.getByTestId('hud-level').waitFor({ timeout: 60000 });
-  await p.waitForTimeout(1800);
+  await p.waitForTimeout(3000);
+  const diag = await p.evaluate(() => window.__mutirao?.scene.eng.diagnostics());
   const check = () => p.evaluate(() => {
     const out = [];
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`rolagem horizontal ${document.documentElement.scrollWidth}`);
@@ -40,7 +41,7 @@ for (const [w, h] of SIZES) {
   await p.screenshot({ path: `test-results/vp-${w}x${h}-panel.png` });
   const issues = [...new Set([...world, ...panel])];
   bad += issues.length + errs.length;
-  console.log(`${w}x${h}: ${issues.length ? issues.join('; ') : 'ok'}${errs.length ? ' | erros: ' + errs.join(' | ') : ''}`);
+  console.log(`${w}x${h}: ${issues.length ? issues.join('; ') : 'ok'} | ${JSON.stringify(diag)}${errs.length ? ' | erros: ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }
 await browser.close();

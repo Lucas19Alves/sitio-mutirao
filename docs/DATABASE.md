@@ -86,3 +86,12 @@ Os testes criam contas `ta_*`, `tb_*`, `coop_a_*`, `coop_b_*` e `vitrine_*`. Par
 ```sql
 delete from auth.users where email ~ '^(ta|tb|coop_a|coop_b|vitrine)_[a-z0-9_]+@jogadores\.fazenda\.invalid$';
 ```
+
+## v1.0 — mochila e ajudantes (migration `20261103000006_backpack_workers.sql`)
+
+- `farm_members.bag jsonb` (itens na mochila do jogador) e `farm_members.bag_tier int` (tamanho; capacidade em `CONFIG.bagCap`).
+- `harvest` e `reap` agora enchem a mochila de quem coletou (`bag_full` quando não cabe nada; enche parcialmente se couber parte).
+- Novas ações do `farm_act`: `deposit` (mochila → estoque, até o limite do celeiro), `sell` com `src: 'bag'`, `bag` (próximo tamanho de mochila), `hire` (contrata/treina ajudante) e `wclaim` (recolhe a produção acumulada dos ajudantes, calculada pelo tempo no servidor).
+- Ajudantes ficam em `farm_entities` (`entity_key = 'workers'`, `state.w = { id: { lv, at } }`).
+- `members_json` e o delta incluem `bag` e `bag_tier`.
+- Observação: o histórico do projeto tem uma migration vazia chamada `backpack_workers` (um `select 1` aplicado por engano); a lógica real entrou como `backpack_workers_logic`. Não tem efeito no banco.

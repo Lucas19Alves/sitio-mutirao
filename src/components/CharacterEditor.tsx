@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../services/supabase.ts';
 import {
-  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, POSES, FW, FH, drawPreview, type Look, type Pose,
+  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, type Look,
 } from '../game/art/characters.ts';
 import type { Me } from '../App.tsx';
 
@@ -18,35 +18,26 @@ const GROUPS: { label: string; field: Field; names?: string[]; colors?: string[]
   { label: 'Acessório', field: 'acc', names: ACCESSORIES },
 ];
 
-/** Prévia animada: respira, caminha girando nas 4 direções e comemora; ou a pose escolhida. */
-const SHOW: [Pose, number, number][] = [['idle', 0, 2400], ['walk', 0, 1400], ['walk', 1, 1400], ['walk', 3, 1400], ['walk', 2, 1400], ['work', 0, 1200], ['cheer', 0, 1300]];
-const RATE: Record<Pose, number> = { idle: 2.2, walk: 9, work: 9, crouch: 4, cheer: 5, carry: 8 };
-function LivePreview({ look, scale }: { look: Look; scale: number }) {
+
+/** Prévia 3D animada (o mesmo modelo do jogo): respira, anda, trabalha e comemora; ou a pose escolhida. */
+type Preview = { setLook: (l: unknown) => void; setPose: (p: string | null, ry?: number) => void; dispose: () => void };
+const PICKS: [string, string | null, number][] = [['Animar', null, 0], ['Frente', 'idle', 0], ['Lado', 'walk', Math.PI / 2], ['Costas', 'idle', Math.PI], ['Festa', 'celebrate', 0]];
+function LivePreview({ look }: { look: Look; scale?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const [pick, setPick] = useState<[Pose, number] | null>(null);
+  const pv = useRef<Preview | null>(null);
+  const [pick, setPick] = useState(0);
   useEffect(() => {
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let raf = 0; const t0 = performance.now();
-    const total = SHOW.reduce((n, s) => n + s[2], 0);
-    const loop = (t: number) => {
-      const el = ref.current; if (!el) return;
-      let pose: Pose, row: number, local: number;
-      if (pick) { [pose, row] = pick; local = t - t0; }
-      else { let k = (t - t0) % total, i = 0; while (k > SHOW[i][2]) { k -= SHOW[i][2]; i++; } [pose, row] = SHOW[i]; local = k; }
-      const f = reduce ? 0 : Math.floor((local / 1000) * RATE[pose]) % POSES[pose][1];
-      drawPreview(el, look, row, pose, f);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [look, pick]);
+    let alive = true;
+    void import('../game/three/thumbs3d.ts').then((m) => { if (!alive || !ref.current) return; pv.current = m.mountPreview(ref.current); pv.current.setLook(look); });
+    return () => { alive = false; pv.current?.dispose(); pv.current = null; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { pv.current?.setLook(look); }, [look]);
+  useEffect(() => { const [, p, ry] = PICKS[pick]; pv.current?.setPose(p, ry); }, [pick]);
   return (
     <>
-      <div className="pedestal"><canvas ref={ref} className="char-portrait" width={FW * 2} height={FH * 2} style={{ width: FW * scale, height: FH * scale }} data-testid="look-preview" /></div>
+      <div className="pedestal3d"><canvas ref={ref} className="char-3d" data-testid="look-preview" /></div>
       <div className="char-dirs" role="group" aria-label="Pose da prévia">
-        {([['Andar', null], ['Frente', ['idle', 0]], ['Lado', ['walk', 2]], ['Costas', ['idle', 3]], ['Festa', ['cheer', 0]]] as [string, [Pose, number] | null][]).map(([n, v]) => (
-          <button key={n} className={`chip${JSON.stringify(pick) === JSON.stringify(v) ? ' on' : ''}`} onClick={() => setPick(v)}>{n}</button>
-        ))}
+        {PICKS.map(([n], i) => <button key={n} className={`chip${pick === i ? ' on' : ''}`} onClick={() => setPick(i)} aria-pressed={pick === i}>{n}</button>)}
       </div>
     </>
   );

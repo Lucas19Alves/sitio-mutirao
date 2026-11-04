@@ -10,15 +10,17 @@ Roda no navegador (desktop, Android, iPhone, tablets) e pode ser instalado na te
 
 | Camada | Uso |
 | --- | --- |
-| Phaser 4.2.1 | Mundo, sprites, animações, câmera, toque/teclado |
+| Three.js 0.186 | Mundo 3D: terreno, modelos, personagens com esqueleto, luz e sombras, câmera em perspectiva |
 | React 19 + TypeScript 7 | Telas, HUD e painéis |
 | Vite 8 | Desenvolvimento e build |
 | Supabase | Auth (username + senha), Postgres com RLS, RPCs que validam a economia, Realtime (Broadcast + Presence), 1 Edge Function |
 | Playwright | Testes E2E com dois navegadores independentes |
 
-O mundo é **top-down ortográfico** (câmera 2D de cima, sem projeção isométrica): grade retangular de 32 px, caminhos retos, canteiros e prédios alinhados aos eixos e ordenação por Y. Volume vem da arte em 3/4 frontal cartoon (fachada + telhado), de sombras para baixo-direita e de gradientes; a direção de arte está em [docs/ART_BIBLE.md](docs/ART_BIBLE.md). A lógica usa a mesma grade do servidor.
+O mundo é **3D de verdade** (Three.js): terreno com relevo, rio escavado com água animada, pontes, árvores, pedras, minérios, plantações em 6 estágios, 25 prédios modelados (paredes com textura em relevo, telhados de telhas, portas, janelas com floreiras, chaminés com fumaça, moinho girando), galinhas, borboletas e pássaros. A câmera é uma `PerspectiveCamera` elevada (~52–56°) que segue o personagem. Os personagens têm **esqueleto (19 ossos)** e 15 animações esqueléticas com transição suave. A lógica continua na mesma grade do servidor (1 tile = 1 unidade 3D).
 
-Toda a arte é procedural e cartoon (Canvas 2D pintado a 2× no carregamento e empacotado em atlas: tileset do terreno com extrusão, natureza, prédios, cultivos em 6 estágios, efeitos e spritesheets de personagem com 6 poses × 4 direções) e a **trilha sonora é generativa** (violão dedilhado por Karplus-Strong, pad, flauta, baixo, pássaros e vento sintetizados em WebAudio): nenhum arquivo de imagem ou áudio é baixado, e a música nunca repete igual. Música e efeitos têm volumes separados em Ajustes.
+**Jogabilidade por proximidade:** andar é a ação principal. Chegando perto de árvores, pedras, capim ou canteiros maduros, o personagem corta, minera, ceifa e colhe sozinho com a ferramenta certa; os recursos vão para a **mochila** (50 itens no começo, melhorável). No Celeiro a mochila descarrega sozinha. Os painéis dos prédios (mercado, celeiro, oficinas, pedidos, obras) **abrem ao chegar perto e fecham ao se afastar**. **Ajudantes** contratados produzem com o tempo e aparecem trabalhando no mundo.
+
+Todos os modelos são gerados por código no carregamento (geometria low-poly com cor por vértice, juntada em poucas malhas e instanciada; os retratos da interface são renderizados desses mesmos modelos) e a **trilha sonora é generativa** (violão dedilhado por Karplus-Strong, pad, flauta, baixo, pássaros e vento sintetizados em WebAudio): nenhum arquivo de imagem ou áudio é baixado, e a música nunca repete igual. Música e efeitos têm volumes separados em Ajustes.
 
 ## Como executar
 

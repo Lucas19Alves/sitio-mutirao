@@ -3,12 +3,14 @@ export * from './production.ts';
 export * from './buildings.ts';
 export * from './world.ts';
 export * from './progression.ts';
+export * from './workers.ts';
 
 import { ITEMS } from './items.ts';
 import { CROPS, NODES, TOOLS, RECIPES, NODE_BY_ID, RECIPE_BY_ID } from './production.ts';
 import { BUILDINGS, REGIONS, BUILDING_BY_ID, REGION_BY_ID } from './buildings.ts';
 import { WORLD_NODES } from './world.ts';
 import { LEVEL_XP, QUESTS, CONTRACTS, ORDER_NPCS, CONFIG, MAX_LEVEL } from './progression.ts';
+import { WORKERS, workerPeriodMs } from './workers.ts';
 
 /** De onde vem cada item: região onde aparece e, para produtos, o prédio. */
 export function itemSource(id: string): { r: string; b?: string } {
@@ -42,6 +44,7 @@ export function serverCatalog() {
     contracts: CONTRACTS.map((x) => ({ id: x.id, npc: x.npc, level: x.level, items: x.items, coins: x.coins, xp: x.xp, rep: x.rep })),
     npcs: ORDER_NPCS,
     config: CONFIG,
+    workers: Object.fromEntries(WORKERS.map((w) => [w.id, { item: w.item, region: w.region, level: w.level, cap: w.cap, costs: w.costs.map((c) => ({ coins: c.coins ?? 0, items: c.items ?? {} })), period: [1, 2, 3].map((lv) => workerPeriodMs(w, lv)) }])),
   };
 }
 

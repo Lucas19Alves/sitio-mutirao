@@ -11,6 +11,9 @@ export function errorText(code: string | undefined): string {
     case 'missing_item': return `Faltam itens: ${b}× ${itemName(a)}.`;
     case 'no_coins': return `Moedas insuficientes (precisa de ${a}).`;
     case 'storage_full': return 'Celeiro cheio. Venda itens ou melhore o Celeiro.';
+    case 'bag_full': return 'Mochila cheia! Descarregue no Celeiro.';
+    case 'bag_empty': return 'A mochila está vazia.';
+    case 'max_level': return 'Já está no máximo.';
     case 'level_required': return `Disponível no nível ${a} da fazenda.`;
     case 'tool_required': return `Precisa de ${TOOL_BY_ID[a as ToolId]?.tiers[Number(b) - 1]?.name ?? a}.`;
     case 'node_depleted': return 'Esse recurso já foi coletado. Ele volta em instantes.';

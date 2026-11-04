@@ -7,6 +7,6 @@ export default defineConfig({
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 2000,
-    rollupOptions: { output: { manualChunks: (id: string) => (id.includes('node_modules/phaser') ? 'phaser' : id.includes('node_modules/@supabase') ? 'supabase' : undefined) } },
+    rollupOptions: { output: { manualChunks: (id: string) => (id.includes('node_modules/three') ? 'three' : id.includes('node_modules/@supabase') ? 'supabase' : undefined) } },
   },
 });

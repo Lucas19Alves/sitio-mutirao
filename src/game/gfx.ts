@@ -7,7 +7,8 @@ const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } cat
 const prefersReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
-let quality = load('sm-quality', 'high') as Quality;
+// celulares começam em Média (sombras só do que importa); dá para subir em Ajustes
+let quality = load('sm-quality', coarse() ? 'medium' : 'high') as Quality;
 let effects = load('sm-effects', '1') === '1';
 let reduceMotion = load('sm-reduce', prefersReduced() ? '1' : '0') === '1';
 let joystick = load('sm-joy', coarse() ? '1' : '0') === '1';

@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase.ts';
 import { signOut } from '../services/auth.ts';
-import { portrait } from '../game/art/characters.ts';
+import { facePortrait, useThumbs } from '../game/art/portraits.ts';
 import { errorText } from '../utils/errors.ts';
 import type { Me } from '../App.tsx';
 
 interface FarmItem { id: string; name: string; level: number; invite_code: string; role: string; members: number }
 
-export function Portrait({ look, scale = 1, className }: { look: Me['look']; scale?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { const el = ref.current!; el.innerHTML = ''; el.appendChild(portrait(look, scale)); }, [look, scale]);
-  return <div className={className ?? 'portrait'} ref={ref} aria-hidden />;
+/** Rosto do personagem (renderizado do modelo 3D). */
+export function Portrait({ look, className }: { look: Me['look']; scale?: number; className?: string }) {
+  useThumbs();
+  return <span className={className ?? 'portrait'} aria-hidden><img src={facePortrait(look, 96)} alt="" /></span>;
 }
 
 export function FarmsScreen({ me, onOpen, onEditCharacter }: { me: Me; onOpen: (id: string) => void; onEditCharacter: () => void }) {

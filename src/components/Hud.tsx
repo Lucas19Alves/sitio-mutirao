@@ -3,11 +3,11 @@ import { QUESTS, MAX_LEVEL, ITEM_BY_ID, REGION_BY_ID, MAP_W, MAP_H, TILE, type Q
 import { useFarm, useTicker } from '../hooks/useStore.ts';
 import { bus, type PanelId } from '../game/bus.ts';
 import { capacity, xpNeed, unlocksAt } from '../game/rules.ts';
-import { Medal, Modal, useCountUp, ItemIcon } from './ui.tsx';
+import { Medal, Modal, useCountUp } from './ui.tsx';
 import { Portrait } from './FarmsScreen.tsx';
 import { normalizeLook } from '../game/art/characters.ts';
 import { iconUrl } from '../game/art/icons.ts';
-import { buildingPortrait } from '../game/art/portraits.ts';
+import { buildingPortrait, useThumbs } from '../game/art/portraits.ts';
 import { store } from '../game/state/store.ts';
 import { errorText } from '../utils/errors.ts';
 import { fmt } from '../utils/format.ts';
@@ -118,11 +118,11 @@ function Joystick() {
   );
 }
 
-/** Ícone que voa do centro (personagem) até o Estoque quando algo é coletado. */
+/** Item coletado: ícone voa do personagem até o medidor da mochila. */
 function useGainFly() {
   useEffect(() => bus.on('gain', ({ item }: { item: string }) => {
     if (gfx.reduceMotion) return;
-    const to = document.querySelector('[data-testid="dock-inventory"]')?.getBoundingClientRect();
+    const to = document.querySelector('[data-testid="hud-bag"]')?.getBoundingClientRect();
     if (!to) return;
     const img = document.createElement('img');
     img.src = iconUrl(item, 64); img.className = 'fly-ico'; img.alt = '';
@@ -134,7 +134,7 @@ function useGainFly() {
       { transform: `translate(${fx}px, ${fy - 30}px) scale(1.1)`, opacity: 1, offset: 0.25 },
       { transform: `translate(${tx}px, ${ty}px) scale(.7)`, opacity: 1 },
     ], { duration: 820, easing: 'cubic-bezier(.5,0,.75,0)' });
-    a.onfinish = () => { img.remove(); const b = document.querySelector('[data-testid="dock-inventory"]'); b?.classList.remove('bump'); void (b as HTMLElement | null)?.offsetWidth; b?.classList.add('bump'); };
+    a.onfinish = () => { img.remove(); const b = document.querySelector('[data-testid="hud-bag"]'); b?.classList.remove('bump'); void (b as HTMLElement | null)?.offsetWidth; b?.classList.add('bump'); };
   }), []);
 }
 
@@ -142,17 +142,18 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const s = useFarm();
   useTicker(1000);
   useSound();
+  useThumbs();
   useGfx();
   useGainFly();
   const narrow = useNarrow();
-  const [ctx, setCtx] = useState<{ label: string; icon: string; locked?: boolean } | null>(null);
+  const [bagAlert, setBagAlert] = useState(0);
   const [more, setMore] = useState(false);
   const [talk, setTalk] = useState(false);
   const [mapOpen, setMapOpen] = useState(() => { try { return localStorage.getItem('sm-minimap') !== '0' && innerWidth > 760; } catch { return innerWidth > 760; } });
   const [questOpen, setQuestOpen] = useState(() => innerWidth > 760);
   const [modal, setModal] = useState<{ kind: 'level'; lv: number } | { kind: 'region'; id: string } | null>(null);
   const [gain, setGain] = useState<{ n: number; k: number } | null>(null);
-  useEffect(() => bus.on('context', (l: { label: string; icon: string; locked?: boolean } | null) => setCtx(l)), []);
+  useEffect(() => bus.on('bagfull', () => setBagAlert(Date.now())), []);
   useEffect(() => bus.on('levelup', (lv: number) => setModal({ kind: 'level', lv })), []);
   const f = s.farm!;
   const nRegions = f.progression.regions.length;
@@ -209,6 +210,9 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
                 {gain && <em key={gain.k} className={gain.n > 0 ? 'gain up' : 'gain down'}>{gain.n > 0 ? '+' : ''}{fmt(gain.n)}</em>}
               </span>
               <button className={`res res-btn${used >= cap ? ' full' : ''}`} onClick={() => open('inventory')} title="Ocupação do celeiro"><img src={iconUrl('ui_barn', 64)} alt="" /><b>{used}/{cap}</b></button>
+              <button className={`res res-bag${s.bagUsed() >= s.bagCap() ? ' full' : ''}${Date.now() - bagAlert < 2500 ? ' alert' : ''}`} onClick={() => open('inventory')} title="Mochila (leve ao Celeiro para guardar)" data-testid="hud-bag">
+                <i className="bag-ico" aria-hidden>🎒</i><b>{s.bagUsed()}/{s.bagCap()}</b><span className="bag-fill" style={{ width: `${Math.min(100, (100 * s.bagUsed()) / s.bagCap())}%` }} />
+              </button>
               <span className="res res-rep" title="Reputação"><img src={iconUrl('star', 64)} alt="" /><b>{f.reputation}</b></span>
             </div>
             <div className="xpbar" title={need ? `${fmt(f.xp)} / ${fmt(need)} XP` : 'Nível máximo'}><span style={{ width: `${pct * 100}%` }} /></div>
@@ -284,13 +288,6 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
               <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="4" fill="currentColor" /><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
             </button>
           </div>
-        )}
-        {ctx && !panelOpen && (
-          <button className={`act-btn${ctx.locked ? ' locked' : ''}`} onClick={() => bus.emit('context:do')} data-testid="ctx-btn" aria-label={ctx.label}>
-            <span className="act-ico">{ctx.icon.startsWith('b:') ? <img src={buildingPortrait(ctx.icon.slice(2), 96)} alt="" /> : <ItemIcon id={ctx.icon} size={34} />}</span>
-            <span className="act-label">{ctx.label}</span>
-            {!narrow && <kbd>E</kbd>}
-          </button>
         )}
       </div>
 

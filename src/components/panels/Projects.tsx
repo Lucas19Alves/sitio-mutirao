@@ -8,7 +8,7 @@ import { Sheet, ItemIcon, Btn, Bar, CostList, toast } from '../ui.tsx';
 import { act } from './Panels.tsx';
 import { fmt } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
-import { buildingPortrait } from '../../game/art/portraits.ts';
+import { buildingPortrait, useThumbs } from '../../game/art/portraits.ts';
 import { iconUrl } from '../../game/art/icons.ts';
 
 const thumbOf = (k: string) => (k.startsWith('r:') ? iconUrl('ui_map', 96) : buildingPortrait(k.slice(2), 128));
@@ -47,6 +47,7 @@ async function give(k: string, i: string, q: number) {
 
 function ActiveProject({ p, highlight }: { p: Project; highlight: boolean }) {
   const s = useFarm();
+  useThumbs();
   const { need, got } = value(p);
   const totalBy = Object.values(p.by).reduce((a, b) => a + b, 0) || 1;
   const rows: [string, number][] = [...(p.need.coins ? [['coins', p.need.coins] as [string, number]] : []), ...Object.entries(p.need.items ?? {})];
@@ -91,6 +92,7 @@ function ActiveProject({ p, highlight }: { p: Project; highlight: boolean }) {
 
 export function ProjectsPanel({ onClose }: { onClose: () => void }) {
   const s = useFarm();
+  useThumbs();
   const [focus, setFocus] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => bus.on('projects:focus', (k: string) => setFocus(k)), []);
