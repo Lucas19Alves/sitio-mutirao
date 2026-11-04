@@ -20,6 +20,7 @@ import { ProjectsPanel } from './Projects.tsx';
 import { OrdersPanel } from './Orders.tsx';
 import { BuildingPanel } from './Building.tsx';
 import { ProgressPanel } from './Progress.tsx';
+import { MissionsPanel, FarmHub, FieldsPanel, FieldPanel, ObstaclePanel, ShopPanel, MePanel } from './Growth.tsx';
 import type { Me } from '../../App.tsx';
 import type { Look } from '../../game/art/characters.ts';
 
@@ -43,6 +44,8 @@ export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: Pa
     return <BuildingPanel id={panel.b} onClose={onClose} />;
   }
   if (typeof panel === 'object' && 'plant' in panel) return <PlantPanel e={panel.plant} i={panel.i} onClose={onClose} />;
+  if (typeof panel === 'object' && 'field' in panel) return <FieldPanel id={panel.field} onClose={onClose} />;
+  if (typeof panel === 'object' && 'obs' in panel) return <ObstaclePanel id={panel.obs} onClose={onClose} />;
   switch (panel) {
     case 'inventory': return <InventoryPanel onClose={onClose} />;
     case 'sell': return <SellPanel onClose={onClose} />;
@@ -50,7 +53,12 @@ export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: Pa
     case 'orders': return <OrdersPanel onClose={onClose} />;
     case 'tools': return <ToolsPanel onClose={onClose} />;
     case 'progress': return <ProgressPanel onClose={onClose} />;
-    case 'character': return <Sheet title="Aparência" icon="ui_people" onClose={onClose} wide><CharacterEditor embedded me={me} onSaved={(l) => { onLookChange(l); onClose(); toast('Aparência salva.', 'ok'); }} /></Sheet>;
+    case 'missions': return <MissionsPanel onClose={onClose} />;
+    case 'farm': return <FarmHub onClose={onClose} />;
+    case 'fields': return <FieldsPanel onClose={onClose} />;
+    case 'shop': return <ShopPanel onClose={onClose} />;
+    case 'me': return <MePanel me={me} onClose={onClose} />;
+    case 'character': return <Sheet title="Ateliê" subtitle="Troque o visual do seu personagem" icon="ui_people" onClose={onClose} wide><CharacterEditor embedded me={me} onSaved={(l) => { onLookChange(l); onClose(); toast('Aparência salva.', 'ok'); }} /></Sheet>;
     case 'settings': return <SettingsPanel onClose={onClose} me={me} onExit={onExit} onLookChange={onLookChange} />;
     default: return null;
   }
@@ -236,7 +244,7 @@ function HomePanel({ onClose }: { onClose: () => void }) {
       </Section>
       <div className="row wrap">
         <Btn small kind="ghost" onClick={() => { bus.emit('panel', 'projects'); setTimeout(() => bus.emit('projects:focus', 'b:farmhouse'), 30); }}>Melhorar a casa</Btn>
-        <Btn small kind="ghost" onClick={() => bus.emit('panel', 'character')}>Mudar aparência</Btn>
+        <Btn small kind="ghost" onClick={() => bus.emit('panel', 'character')}>Ateliê: mudar visual</Btn>
       </div>
     </Sheet>
   );
@@ -378,7 +386,7 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
       </section>
       <section className="panel inset">
         <h3 className="sub">Conta</h3>
-        <Btn small kind="ghost" onClick={() => setEditing(true)}>Mudar aparência</Btn>
+        <p className="hint">Para trocar o visual, vá ao ateliê na Casa da Fazenda.</p>
         <form className="pw" onSubmit={async (e) => { e.preventDefault(); setPwMsg(''); try { await changePassword(pw.cur, pw.next, me.username); setPw({ cur: '', next: '' }); setPwMsg('Senha alterada.'); } catch (x) { setPwMsg((x as Error).message); } }}>
           <label>Senha atual<input type="password" autoComplete="current-password" value={pw.cur} onChange={(e) => setPw({ ...pw, cur: e.target.value })} /></label>
           <label>Nova senha<input type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} /></label>

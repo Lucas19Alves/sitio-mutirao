@@ -1,7 +1,10 @@
 // Aparência dos personagens (salva em profiles.character_config). O modelo 3D que usa estes
 // dados está em src/game/three/kit/character.ts.
 
-export interface Look { skin: number; hair: number; hairColor: number; shirt: number; shirtColor: number; pants: number; hat: number; hatColor: number; acc: number }
+export interface Look { body: number; skin: number; hair: number; hairColor: number; shirt: number; shirtColor: number; pants: number; hat: number; hatColor: number; acc: number; shoes: number }
+
+export const BODIES = ['Masculino', 'Feminino'];
+export const SHOE_COLORS = ['#6a442a', '#2f2a26', '#f6f1e4', '#c8433a', '#3a78c2', '#e0a81c'];
 
 export const SKINS = ['#f8d8bd', '#eebd95', '#d49c6c', '#b5794b', '#8c5732', '#603b22'];
 export const HAIR_STYLES = ['Curto', 'Cacheado', 'Rabo de cavalo', 'Tranças', 'Raspado', 'Black power'];
@@ -12,9 +15,10 @@ export const PANTS_COLORS = ['#35548a', '#5f4938', '#456a40', '#2a2f38', '#a76d3
 export const HATS = ['Nenhum', 'Chapéu de palha', 'Boné', 'Lenço', 'Chapéu com flor', 'Gorro'];
 export const ACCESSORIES = ['Nenhum', 'Óculos', 'Lenço no pescoço', 'Mochila', 'Avental'];
 
-export const DEFAULT_LOOK: Look = { skin: 1, hair: 0, hairColor: 1, shirt: 0, shirtColor: 0, pants: 0, hat: 1, hatColor: 3, acc: 0 };
+export const DEFAULT_LOOK: Look = { body: 0, skin: 1, hair: 0, hairColor: 1, shirt: 0, shirtColor: 0, pants: 0, hat: 1, hatColor: 3, acc: 0, shoes: 0 };
 
 export const LOOK_LIMITS: Record<keyof Look, number> = {
+  body: 2, shoes: 6,
   skin: SKINS.length, hair: HAIR_STYLES.length, hairColor: HAIR_COLORS.length, shirt: SHIRT_STYLES.length,
   shirtColor: CLOTH_COLORS.length, pants: PANTS_COLORS.length, hat: HATS.length, hatColor: CLOTH_COLORS.length, acc: ACCESSORIES.length,
 };

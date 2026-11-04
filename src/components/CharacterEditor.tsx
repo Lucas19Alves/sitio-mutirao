@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../services/supabase.ts';
 import {
-  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, type Look,
+  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, BODIES, SHOE_COLORS, type Look,
 } from '../game/art/characters.ts';
+import { COSMETIC_OF } from '../data/catalog.ts';
+import { store } from '../game/state/store.ts';
 import type { Me } from '../App.tsx';
 
 type Field = keyof Look;
 const GROUPS: { label: string; field: Field; names?: string[]; colors?: string[] }[] = [
+  { label: 'Corpo', field: 'body', names: BODIES },
   { label: 'Pele', field: 'skin', colors: SKINS },
   { label: 'Cabelo', field: 'hair', names: HAIR_STYLES },
   { label: 'Cor do cabelo', field: 'hairColor', colors: HAIR_COLORS },
@@ -16,7 +19,15 @@ const GROUPS: { label: string; field: Field; names?: string[]; colors?: string[]
   { label: 'Chapéu', field: 'hat', names: HATS },
   { label: 'Cor do chapéu', field: 'hatColor', colors: CLOTH_COLORS },
   { label: 'Acessório', field: 'acc', names: ACCESSORIES },
+  { label: 'Calçado', field: 'shoes', colors: SHOE_COLORS },
 ];
+
+/** Itens pagos ainda não liberados (comprados na Loja; ficam na conta). */
+function lockedOf(f: Field, v: number) {
+  const c = COSMETIC_OF(f, v);
+  return c && !(store.me()?.owned ?? []).includes(c.id) ? c : null;
+}
+const clean = (l: Look): Look => { const o = { ...l }; for (const k of Object.keys(o) as Field[]) if (lockedOf(k, o[k])) o[k] = 0; return o; };
 
 
 /** Prévia 3D animada (o mesmo modelo do jogo): respira, anda, trabalha e comemora; ou a pose escolhida. */
@@ -48,7 +59,8 @@ export function CharacterEditor({ me, onSaved, embedded }: { me: Me; onSaved: (l
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (f: Field, v: number) => setLook({ ...look, [f]: v });
-  const random = () => setLook(Object.fromEntries(Object.entries(LOOK_LIMITS).map(([k, n]) => [k, Math.floor(Math.random() * n)])) as unknown as Look);
+  const random = () => setLook(clean(Object.fromEntries(Object.entries(LOOK_LIMITS).map(([k, n]) => [k, Math.floor(Math.random() * n)])) as unknown as Look));
+  const blocked = (Object.keys(look) as Field[]).some((k) => lockedOf(k, look[k]));
 
   const save = async () => {
     setBusy(true); setErr('');
@@ -73,19 +85,20 @@ export function CharacterEditor({ me, onSaved, embedded }: { me: Me; onSaved: (l
               <legend>{g.label}</legend>
               <div className="opt-row">
                 {g.colors
-                  ? g.colors.map((c, i) => (
-                    <button key={c} className={`swatch${look[g.field] === i ? ' on' : ''}`} style={{ background: c }} onClick={() => set(g.field, i)} aria-label={`${g.label} ${i + 1}`} aria-pressed={look[g.field] === i} />
-                  ))
-                  : g.names!.map((n, i) => (
-                    <button key={n} className={`chip${look[g.field] === i ? ' on' : ''}`} onClick={() => set(g.field, i)} aria-pressed={look[g.field] === i}>{n}</button>
-                  ))}
+                  ? g.colors.map((c, i) => { const lk = lockedOf(g.field, i); return (
+                    <button key={c} className={`swatch${look[g.field] === i ? ' on' : ''}${lk ? ' locked' : ''}`} style={{ background: c }} onClick={() => set(g.field, i)} aria-label={`${g.label} ${i + 1}${lk ? ' (bloqueado)' : ''}`} aria-pressed={look[g.field] === i} title={lk ? `${lk.name}: libere na Loja` : undefined} />
+                  ); })
+                  : g.names!.map((n, i) => { const lk = lockedOf(g.field, i); return (
+                    <button key={n} className={`chip${look[g.field] === i ? ' on' : ''}${lk ? ' locked' : ''}`} onClick={() => set(g.field, i)} aria-pressed={look[g.field] === i} title={lk ? 'Libere na Loja' : undefined}>{lk ? '🔒 ' : ''}{n}</button>
+                  ); })}
               </div>
             </fieldset>
           ))}
         </div>
       </div>
+      {blocked && <p className="note">Alguns itens escolhidos estão bloqueados (🔒). Libere na Loja para poder vestir.</p>}
       {err && <p className="form-err" role="alert">{err}</p>}
-      <div className="char-save"><button className="btn btn-primary btn-lg" onClick={save} disabled={busy} data-testid="save-look">{busy ? 'Salvando…' : 'Salvar aparência'}</button></div>
+      <div className="char-save"><button className="btn btn-primary btn-lg" onClick={save} disabled={busy || blocked} data-testid="save-look">{busy ? 'Salvando…' : 'Salvar aparência'}</button></div>
     </main>
   );
 }

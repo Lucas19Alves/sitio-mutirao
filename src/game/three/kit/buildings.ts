@@ -263,13 +263,20 @@ function special(def: BuildingDef, b: B): BuildingModel | null {
       return done({ top: [cx, 2.9, cz], door: [cx, 0, D + 0.1], sign: [cx, 2.55, cz + 0.85] }, [cx - w / 2, cz - 0.5, cx + w / 2, cz + 0.55]);
     }
     case 'order_board': {
-      for (const s of [-1, 1]) b.k.box(0.12, 1.8, 0.12, WOOD, { p: [cx + s * 0.7, 0.9, cz] }, 0.02);
-      b.k.box(1.6, 1.0, 0.1, WOOD_L, { p: [cx, 1.25, cz], jitter: 0.08 }, 0.03);
-      b.k.box(1.7, 1.1, 0.06, WOOD_D, { p: [cx, 1.25, cz - 0.05] }, 0.02);
-      const r = b.r;
-      for (let i = 0; i < 6; i++) { b.k.box(0.32, 0.38, 0.02, ['#fffdf6', '#fff3c4', '#e3f2ff'][i % 3], { p: [cx - 0.5 + (i % 3) * 0.5, 1.48 - Math.floor(i / 3) * 0.46, cz + 0.06], r: [0, 0, (r() - 0.5) * 0.2] }, 0.005); b.k.sphere(0.025, '#e2574c', { p: [cx - 0.5 + (i % 3) * 0.5, 1.64 - Math.floor(i / 3) * 0.46, cz + 0.08] }, 5, 4); }
-      b.k.prism(0.7, 0.35, 1.9, roof, { p: [cx, 1.82, cz], r: [0, Math.PI / 2, 0] });
-      return done({ top: [cx, 2.5, cz], door: [cx, 0, D + 0.1] }, [cx - 0.8, cz - 0.15, cx + 0.8, cz + 0.15]);
+      // balcão de atendimento: bancada com toldo listrado, sino, caixa e mercadorias
+      b.k.box(1.8, 0.75, 0.6, WOOD, { p: [cx, 0.38, cz + 0.15], jitter: 0.08 }, 0.04);
+      b.k.box(1.95, 0.08, 0.72, WOOD_L, { p: [cx, 0.79, cz + 0.15] }, 0.02);
+      for (let i = 0; i < 5; i++) b.k.box(0.03, 0.6, 0.02, WOOD_D, { p: [cx - 0.72 + i * 0.36, 0.38, cz + 0.46] }, 0.005);
+      for (const s of [-1, 1]) for (const dz of [-0.35, 0.45]) b.k.box(0.1, 2.0, 0.1, WOOD_D, { p: [cx + s * 0.9, 1.0, cz + dz] }, 0.02);
+      const n = 8;
+      for (let i = 0; i < n; i++) b.k.box(2.0 / n + 0.01, 0.05, 1.2, i % 2 ? WHITE : roof, { p: [cx - 1 + (i + 0.5) * 2 / n, 2.05, cz + 0.1], r: [0.22, 0, 0] }, 0.01);
+      for (let i = 0; i < n; i++) b.k.cone(2 / n / 2, 0.14, i % 2 ? WHITE : roof, { p: [cx - 1 + (i + 0.5) * 2 / n, 1.84, cz + 0.68], r: [Math.PI, 0, 0] }, 6);
+      b.k.cyl(0.07, 0.11, 0.1, '#e0a81c', { p: [cx + 0.55, 0.88, cz + 0.25] }, 10); b.k.sphere(0.025, '#e0a81c', { p: [cx + 0.55, 0.96, cz + 0.25] }, 6, 5);
+      b.k.box(0.32, 0.18, 0.24, '#5b8c3a', { p: [cx - 0.5, 0.92, cz + 0.12] }, 0.03);
+      for (let i = 0; i < 5; i++) b.k.sphere(0.06, ['#e2574c', '#f28a24', '#f6c445'][i % 3], { p: [cx - 0.6 + (i % 3) * 0.1, 1.04, cz + 0.06 + Math.floor(i / 3) * 0.12] }, 6, 5);
+      crate(b, cx + 1.25, cz + 0.2, 0.3); crate(b, cx - 1.25, cz + 0.25, 0.34);
+      b.k.box(1.2, 0.36, 0.05, WOOD_L, { p: [cx, 2.3, cz + 0.72], r: [-0.2, 0, 0] }, 0.02);
+      return done({ top: [cx, 2.7, cz], door: [cx, 0, D + 0.1], sign: [cx, 2.3, cz + 0.76] }, [cx - 0.95, cz - 0.15, cx + 0.95, cz + 0.45]);
     }
     case 'apiary': {
       for (const [dx, dz] of [[-0.8, -0.3], [0, 0.1], [0.8, -0.3]]) {

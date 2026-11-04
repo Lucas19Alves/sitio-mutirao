@@ -107,6 +107,15 @@ export const CONFIG = {
   coopProjectXp: 0.25,
   coopContractBonus: 0.3,
   maxMembers: 4,
+  /** cristais: moeda rara, ganha jogando */
+  startCrystals: 5,
+  levelCrystals: 2,
+  regionCrystals: 3,
+  dailyCrystals: 1,
+  coopCrystals: 3,
+  /** chance de um cliente especial (pedido maior, paga cristais) */
+  vipChance: 0.12,
+  vipNpcs: ['Chef do Restaurante', 'Mercador Viajante', 'Artesã da Vila', 'Dona da Pousada'],
   /** Mochila de cada jogador: capacidade por tamanho (0 = inicial). */
   bagCap: [50, 80, 120, 170, 240, 320],
   /** Custo para passar ao tamanho n (índice n-1). */

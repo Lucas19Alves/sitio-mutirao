@@ -61,7 +61,7 @@ for (const b of C.BUILDINGS) { const d = C.doorTile(b.spot); if (occ.has(`${d.x}
 
 // Tudo alcançável a partir do spawn com todas as regiões abertas e prédios construídos
 {
-  const g = C.buildWalkGrid(new Set(C.REGIONS.map((r) => r.id)), new Set(C.BUILDINGS.map((b) => b.id)));
+  const g = C.buildWalkGrid(new Set(C.REGIONS.map((r) => r.id)), new Set(C.BUILDINGS.map((b) => b.id)), new Set(C.OBSTACLES.map((o) => o.id)));
   const seen = new Uint8Array(g.length); const qx = [C.SPAWN.x + C.SPAWN.y * C.MAP_W]; seen[qx[0]] = 1;
   while (qx.length) { const i = qx.pop(); const x = i % C.MAP_W, y = (i / C.MAP_W) | 0;
     for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const j = (y + dy) * C.MAP_W + x + dx; if (g[j] && !seen[j]) { seen[j] = 1; qx.push(j); } } }
@@ -74,7 +74,7 @@ for (const b of C.BUILDINGS) { const d = C.doorTile(b.spot); if (occ.has(`${d.x}
 const perType = {};
 for (const n of C.WORLD_NODES) perType[n.t] = (perType[n.t] ?? 0) + 1;
 
-console.log(`itens ${C.ITEMS.length} · receitas ${C.RECIPES.length} · prédios ${C.BUILDINGS.length} · regiões ${C.REGIONS.length} · nós ${C.WORLD_NODES.length} · missões ${C.QUESTS.length} · contratos ${C.CONTRACTS.length}`);
+console.log(`itens ${C.ITEMS.length} · receitas ${C.RECIPES.length} · prédios ${C.BUILDINGS.length} · regiões ${C.REGIONS.length} · nós ${C.WORLD_NODES.length} · missões principais ${C.MAIN.length} · campos ${C.FIELDS.length} · pets ${C.PETS.length} · contratos ${C.CONTRACTS.length}`);
 console.log('nós por tipo', JSON.stringify(perType));
 console.log('XP por nível', C.LEVEL_XP.join(' '), '· total', C.LEVEL_XP.reduce((a, b) => a + b, 0));
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }

@@ -1,6 +1,7 @@
 import { ITEM_BY_ID, CONTRACTS, CONFIG } from '../../data/catalog.ts';
 import { useFarm } from '../../hooks/useStore.ts';
 import { store } from '../../game/state/store.ts';
+import { bus } from '../../game/bus.ts';
 import { boardSlots, level } from '../../game/rules.ts';
 import { Sheet, ItemIcon, Btn, Bar, Coins, toast } from '../ui.tsx';
 import { act } from './Panels.tsx';
@@ -22,9 +23,11 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
   const cNeed = contract ? Object.entries(contract.items).reduce((a, [k, q]) => a + q * ITEM_BY_ID[k].price, 0) : 1;
   const cGot = contract ? Object.entries(contract.items).reduce((a, [k, q]) => a + Math.min(q, got[k] ?? 0) * ITEM_BY_ID[k].price, 0) : 0;
 
+  const bag = s.bag();
+  const have = (k: string) => s.qty(k) + (bag[k] ?? 0);
   const deliver = async (slot: number) => {
     const r = await act({ t: 'order', o: slot });
-    if (r.ok) { play('coin'); toast('Pedido entregue!', 'ok'); }
+    if (r.ok) { play('coin'); bus.emit('pose', 'sell'); toast(`${r.npc ?? 'Cliente'} agradece! +${fmt(Number(r.g ?? 0))} moedas${Number(r.cr) ? ` e ${r.cr} 💎` : ''}`, 'ok'); }
   };
   const cgive = async (item: string, q: number) => {
     const r = await act({ t: 'cgive', i: item, q });
@@ -32,7 +35,7 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Sheet title="Pedidos e contratos" subtitle="Encomendas de moradores e comerciantes" icon="ui_scroll" onClose={onClose}>
+    <Sheet title="Balcão de Atendimento" subtitle="Clientes na fila e contratos coletivos" icon="ui_scroll" onClose={onClose}>
       {contract && cdef && (
         <section className={`contract panel${cLocked ? ' locked' : ''}`} data-testid="contract">
           <div className="row between"><span className="tag">Contrato coletivo</span>{cLocked && <span className="lock">Nível {contract.reward.level}</span>}</div>
@@ -64,16 +67,18 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
         </section>
       )}
 
-      <h3 className="sub">Pedidos dos moradores</h3>
+      <h3 className="sub">Clientes na fila ({orders.length})</h3>
+      <p className="muted small">Clientes só pedem o que a fazenda já consegue produzir. A entrega usa primeiro a sua mochila, depois o estoque.</p>
       <ul className="list">
         {orders.map((o) => {
-          const ready = Object.entries(o.items).every(([k, q]) => s.qty(k) >= q);
+          const ready = Object.entries(o.items).every(([k, q]) => have(k) >= q);
+          const vip = o.order_key === 'vip';
           return (
-            <li key={o.slot} className={`order panel${ready ? ' ready' : ''}`} data-testid={`order-${o.slot}`}>
-              <div className="row between"><span className="npc"><img src={npcPortrait(o.npc, 96)} alt="" /><strong>{o.npc}</strong></span><span className="reward"><Coins n={o.reward.coins} size={16} /><span>+{o.reward.xp} XP</span></span></div>
+            <li key={o.slot} className={`order panel${ready ? ' ready' : ''}${vip ? ' vip' : ''}`} data-testid={`order-${o.slot}`}>
+              <div className="row between"><span className="npc"><img src={npcPortrait(o.npc, 96)} alt="" /><strong>{vip ? '⭐ ' : ''}{o.npc}</strong>{vip && <em className="tag">cliente especial</em>}</span><span className="reward"><Coins n={o.reward.coins} size={16} /><span>+{o.reward.xp} XP</span>{o.reward.cr ? <span className="cr">💎 {o.reward.cr}</span> : null}</span></div>
               <ul className="order-items">
                 {Object.entries(o.items).map(([k, q]) => (
-                  <li key={k} className={s.qty(k) >= q ? 'ok' : 'miss'}><ItemIcon id={k} size={30} /><span>{Math.min(s.qty(k), q)}/{q}</span><small>{ITEM_BY_ID[k].name}</small></li>
+                  <li key={k} className={have(k) >= q ? 'ok' : 'miss'}><ItemIcon id={k} size={30} /><span>{Math.min(have(k), q)}/{q}</span><small>{ITEM_BY_ID[k].name}</small></li>
                 ))}
               </ul>
               <div className="row">

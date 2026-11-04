@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ITEM_BY_ID, BUILDING_BY_ID, REGION_BY_ID, CONFIG, doorTile } from '../../data/catalog.ts';
+import { ITEM_BY_ID, BUILDING_BY_ID, REGION_BY_ID, CONFIG, OBSTACLE_BY_ID, OBSTACLE_OF_REGION, doorTile } from '../../data/catalog.ts';
 import { useFarm } from '../../hooks/useStore.ts';
 import { store, type Project } from '../../game/state/store.ts';
 import { bus } from '../../game/bus.ts';
@@ -11,7 +11,7 @@ import { play } from '../../game/audio.ts';
 import { buildingPortrait, useThumbs } from '../../game/art/portraits.ts';
 import { iconUrl } from '../../game/art/icons.ts';
 
-const thumbOf = (k: string) => (k.startsWith('r:') ? iconUrl('ui_map', 96) : buildingPortrait(k.slice(2), 128));
+const thumbOf = (k: string) => (k.startsWith('r:') || k.startsWith('o:') ? iconUrl('ui_map', 96) : buildingPortrait(k.slice(2), 128));
 
 /** Valor total (moedas + itens a preço de mercado) entregue/necessário. */
 function value(p: Project) {
@@ -20,21 +20,24 @@ function value(p: Project) {
   return { need, got };
 }
 
-function titleOf(k: string) {
+export function titleOf(k: string) {
   const id = k.slice(2);
-  if (k.startsWith('r:')) return `Expandir: ${REGION_BY_ID[id].name}`;
+  if (k.startsWith('r:')) return OBSTACLE_OF_REGION[id] ? `${OBSTACLE_OF_REGION[id].name}: abrir ${REGION_BY_ID[id].name}` : `Expandir: ${REGION_BY_ID[id].name}`;
+  if (k.startsWith('o:')) return OBSTACLE_BY_ID[id].name;
   if (k.startsWith('u:')) return `${BUILDING_BY_ID[id].name} nível ${store.lvl(id) + 1}`;
   return `Construir ${BUILDING_BY_ID[id].name}`;
 }
 
 function focusOnMap(k: string) {
   const id = k.slice(2);
-  if (k.startsWith('r:')) { const r = REGION_BY_ID[id].rect; bus.emit('focus', { x: r.x + r.w / 2, y: r.y + r.h / 2 }); }
+  const o = k.startsWith('r:') ? OBSTACLE_OF_REGION[id] : k.startsWith('o:') ? OBSTACLE_BY_ID[id] : null;
+  if (o) bus.emit('focus', { x: o.at.x, y: o.at.y });
+  else if (k.startsWith('r:')) { const r = REGION_BY_ID[id].rect; bus.emit('focus', { x: r.x + r.w / 2, y: r.y + r.h / 2 }); }
   else { const d = doorTile(BUILDING_BY_ID[id].spot); bus.emit('focus', { x: d.x, y: d.y - 1 }); }
 }
 
 /** Contribui com um recurso; `q` é limitado ao que falta e ao que há no estoque. */
-async function give(k: string, i: string, q: number) {
+export async function give(k: string, i: string, q: number) {
   if (q <= 0) return;
   const r = await act({ t: 'give', k, i, q });
   if (!r.ok) return;
@@ -45,7 +48,7 @@ async function give(k: string, i: string, q: number) {
   }
 }
 
-function ActiveProject({ p, highlight }: { p: Project; highlight: boolean }) {
+export function ActiveProject({ p, highlight }: { p: Project; highlight: boolean }) {
   const s = useFarm();
   useThumbs();
   const { need, got } = value(p);

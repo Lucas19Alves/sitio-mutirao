@@ -95,3 +95,34 @@ delete from auth.users where email ~ '^(ta|tb|coop_a|coop_b|vitrine)_[a-z0-9_]+@
 - Ajudantes ficam em `farm_entities` (`entity_key = 'workers'`, `state.w = { id: { lv, at } }`).
 - `members_json` e o delta incluem `bag` e `bag_tier`.
 - Observação: o histórico do projeto tem uma migration vazia chamada `backpack_workers` (um `select 1` aplicado por engano); a lógica real entrou como `backpack_workers_logic`. Não tem efeito no banco.
+
+## v1.1 — progressão, cristais, campos, obstáculos, missões e pets (migration `20261104000007_progression.sql`)
+
+- **Colunas novas.** Todas têm padrão, então são compatíveis com as fazendas existentes:
+  - `farms.crystals` (`>= 0`, começa em 5);
+  - `farm_members.pets` (`{"own":{}, "eq":null}`);
+  - `farm_members.perks`;
+  - `profiles.owned`: cosméticos liberados, só o servidor escreve.
+- **Campos:** entidades `f:<campo>` com nível. O campo genérico `field` virou `f:wheat` em todas as fazendas.
+- **Progresso:** `progression.obs` guarda os obstáculos reconstruídos (pontes), `progression.mdone` as missões principais concluídas e `progression.ms` as secundárias, diárias e cooperativa.
+- **Ações novas em `farm_act`:**
+  - `main`, `mref`, `mclaim`: missões;
+  - `fopen`, `fup`: campos;
+  - `rush`: aceleração;
+  - `pet`, `peq`: comprar e levar pet;
+  - `perk`, `cosm`: melhorias e visual.
+- **Obras de obstáculos:** `give` aceita `o:<obstáculo>`.
+- **Ações alteradas:**
+  - `order` usa a mochila antes do estoque e aplica o bônus do pet;
+  - `plant` só aceita a cultura do campo;
+  - `reap` aplica a velocidade e o rendimento do campo;
+  - `harvest` aplica o bônus do pet;
+  - `add_xp` dá cristais por nível;
+  - `give` de região exige a ferramenta do obstáculo.
+- **Removido:** `quest`. A campanha linear deu lugar às missões principais.
+- **Funções auxiliares:**
+  - `game.item_ok`: o item já é obtível?
+  - `game.goal_ok`: o objetivo está cumprido pelo estado real?
+  - `game.gen_mission`, `game.pet_bonus`, `game.pet_xp`, `game.grow_mult`, `game.pay_cr`.
+- **Gatilho `guard_look` em `profiles`:** item de visual pago que não está em `owned` volta ao padrão.
+- **Catálogo (`game.catalog`):** novas chaves `fields`, `obstacles`, `mains`, `pets`, `petLevels`, `perks`, `cosmetics` e `rush`. `items[].req` traz os requisitos de cada item. `quests` saiu.

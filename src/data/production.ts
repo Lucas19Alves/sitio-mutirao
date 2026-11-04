@@ -90,6 +90,8 @@ export const TOOLS: ToolDef[] = [
       { tier: 1, name: 'Machado de Pedra', level: 1, cost: {}, needs: '' },
       { tier: 2, name: 'Machado Reforçado', level: 6, cost: { coins: 120, items: { plank: 8, stone: 12, rope: 4 } }, needs: 'toolshed' },
       { tier: 3, name: 'Machado de Aço', level: 14, cost: { coins: 600, items: { iron_ingot: 4, beam: 4, rope: 6 } }, needs: 'toolshed' },
+      { tier: 4, name: 'Machado Profissional', level: 20, cost: { coins: 1800, items: { iron_ingot: 8, metal_parts: 2 } }, needs: 'smithy' },
+      { tier: 5, name: 'Machado Lendário', level: 26, cost: { coins: 4500, items: { gold_ingot: 4, metal_parts: 4 } }, needs: 'smithy' },
     ],
   },
   {
@@ -98,6 +100,8 @@ export const TOOLS: ToolDef[] = [
       { tier: 1, name: 'Picareta Simples', level: 2, cost: { coins: 20, items: { wood: 10, fiber: 6, rope: 2 } }, needs: 'workbench' },
       { tier: 2, name: 'Picareta Reforçada', level: 11, cost: { coins: 300, items: { plank: 10, stone: 20, rope: 6, brick: 6 } }, needs: 'toolshed' },
       { tier: 3, name: 'Picareta de Aço', level: 21, cost: { coins: 1500, items: { iron_ingot: 8, metal_parts: 2, beam: 6 } }, needs: 'toolshed' },
+      { tier: 4, name: 'Picareta Profissional', level: 24, cost: { coins: 3000, items: { iron_ingot: 10, metal_parts: 4 } }, needs: 'smithy' },
+      { tier: 5, name: 'Picareta Lendária', level: 28, cost: { coins: 6000, items: { gold_ingot: 6, crystal: 4 } }, needs: 'smithy' },
     ],
   },
   {
@@ -105,6 +109,8 @@ export const TOOLS: ToolDef[] = [
     tiers: [
       { tier: 1, name: 'Foice de Madeira', level: 1, cost: { items: { wood: 4, fiber: 4 } }, needs: 'workbench' },
       { tier: 2, name: 'Foice de Ferro', level: 13, cost: { coins: 400, items: { iron_ingot: 3, plank: 6 } }, needs: 'toolshed' },
+      { tier: 3, name: 'Foice Profissional', level: 19, cost: { coins: 1400, items: { iron_ingot: 6, metal_parts: 1 } }, needs: 'smithy' },
+      { tier: 4, name: 'Foice Lendária', level: 25, cost: { coins: 3500, items: { gold_ingot: 3, metal_parts: 3 } }, needs: 'smithy' },
     ],
   },
   {
@@ -112,6 +118,7 @@ export const TOOLS: ToolDef[] = [
     tiers: [
       { tier: 1, name: 'Pá de Madeira', level: 9, cost: { coins: 150, items: { plank: 6, stone: 8, rope: 3 } }, needs: 'toolshed' },
       { tier: 2, name: 'Pá de Aço', level: 15, cost: { coins: 700, items: { iron_ingot: 4, beam: 3 } }, needs: 'toolshed' },
+      { tier: 3, name: 'Pá Profissional', level: 22, cost: { coins: 2200, items: { iron_ingot: 8, metal_parts: 2 } }, needs: 'smithy' },
     ],
   },
 ];

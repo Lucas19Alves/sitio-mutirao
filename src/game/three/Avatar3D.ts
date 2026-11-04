@@ -49,9 +49,9 @@ export class Avatar3D {
     this.xray.geometry = this.c.mesh.geometry;
   }
 
-  play(anim: string, fade = 0.18) {
+  play(anim: string, fade = 0.18, speed = 1) {
     this.anim = anim;
-    this.c.play(anim, fade, anim === 'run' ? 1.05 : 1);
+    this.c.play(anim, fade, (anim === 'run' ? 1.05 : 1) * speed);
     this.c.setTool(TOOL_OF[anim] ?? null);
   }
 

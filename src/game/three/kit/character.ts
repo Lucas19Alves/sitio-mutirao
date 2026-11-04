@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { Kit, tint } from './geo.ts';
 import { matSkin, matVC, matMetal } from './materials.ts';
-import { SKINS, HAIR_COLORS, CLOTH_COLORS, PANTS_COLORS, lookKey, normalizeLook, type Look } from '../../art/characters.ts';
+import { SKINS, HAIR_COLORS, CLOTH_COLORS, PANTS_COLORS, SHOE_COLORS, lookKey, normalizeLook, type Look } from '../../art/characters.ts';
 
 // ---------------------------------------------------------------- esqueleto (pose de repouso, metros)
 const BONES: [name: string, parent: number, x: number, y: number, z: number][] = [
@@ -28,7 +28,6 @@ const at = (b: string, dx = 0, dy = 0, dz = 0): [number, number, number] => [WP[
 
 const HEAD_C = at('head', 0, 0.23, 0);
 const HR = 0.26;
-const SHOE = '#6a442a';
 
 /** Modela o corpo inteiro para uma aparência. */
 function buildGeometry(L: Look): THREE.BufferGeometry {
@@ -36,11 +35,17 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
   const skin = SKINS[L.skin], hairC = HAIR_COLORS[L.hairColor], shirtC = CLOTH_COLORS[L.shirtColor], pantsC = PANTS_COLORS[L.pants], hatC = CLOTH_COLORS[L.hatColor];
   const b = (n: string) => BI[n];
   const [hx, hy, hz] = HEAD_C;
+  // corpo masculino (ombros largos, quadril estreito) ou feminino (cintura marcada, quadril largo)
+  const fem = L.body === 1;
+  const SHOE = SHOE_COLORS[L.shoes] ?? SHOE_COLORS[0];
+  const sh = fem ? 0.3 : 0.36, waist = fem ? 0.26 : 0.32, hipW = fem ? 0.33 : 0.3;
 
   // quadril e tronco
-  k.box(0.3, 0.17, 0.21, pantsC, { p: at('hips', 0, -0.01), bone: b('hips') }, 0.06);
-  k.box(0.31, 0.16, 0.22, L.shirt === 2 ? pantsC : shirtC, { p: at('spine', 0, 0.02), bone: b('spine') }, 0.07);
-  k.box(0.34, 0.2, 0.23, shirtC, { p: at('chest', 0, 0.02), bone: b('chest') }, 0.08);
+  k.box(hipW, 0.17, 0.21, pantsC, { p: at('hips', 0, -0.01), bone: b('hips') }, 0.06);
+  k.box(waist, 0.16, 0.21, L.shirt === 2 ? pantsC : shirtC, { p: at('spine', 0, 0.02), bone: b('spine') }, 0.07);
+  k.box(sh, 0.2, fem ? 0.22 : 0.24, shirtC, { p: at('chest', 0, 0.02), bone: b('chest') }, 0.08);
+  if (fem && L.shirt !== 2) k.cyl(0.17, 0.235, 0.15, tint(L.shirt === 3 ? pantsC : shirtC, -0.08), { p: at('hips', 0, -0.06), bone: b('hips') }, 14);
+  if (!fem) k.box(0.37, 0.05, 0.24, tint(shirtC, -0.06), { p: at('chest', 0, 0.1), bone: b('chest') }, 0.02);
   if (L.shirt === 1) { // xadrez: faixas mais escuras
     for (const dx of [-0.1, 0, 0.1]) k.box(0.025, 0.2, 0.235, tint(shirtC, -0.3), { p: at('chest', dx, 0.02), bone: b('chest') }, 0.005);
     for (const dy of [-0.04, 0.05]) k.box(0.345, 0.022, 0.235, tint(shirtC, -0.25), { p: at('chest', 0, dy), bone: b('chest') }, 0.005);
@@ -84,10 +89,11 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
     k.sphere(0.042, '#2b1d14', { p: [hx + s * 0.088, hy + 0.0, hz + 0.228], s: [1, 1.32, 0.55], bone: H }, 10, 8);
     k.sphere(0.014, '#ffffff', { p: [hx + s * 0.088 + 0.012, hy + 0.025, hz + 0.25], bone: H }, 6, 5);
     k.sphere(0.04, '#f19a92', { p: [hx + s * 0.15, hy - 0.07, hz + 0.19], s: [1, 0.55, 0.4], bone: H }, 8, 6);
-    k.box(0.07, 0.016, 0.02, tint(hairC, -0.25), { p: [hx + s * 0.09, hy + 0.08, hz + 0.232], r: [0, 0, s * -0.12], bone: H }, 0.006);
+    k.box(0.07, fem ? 0.012 : 0.022, 0.02, tint(hairC, -0.25), { p: [hx + s * 0.09, hy + 0.08, hz + 0.232], r: [0, 0, s * (fem ? -0.2 : -0.08)], bone: H }, 0.006);
+    if (fem) for (const j of [-1, 0, 1]) k.box(0.012, 0.03, 0.01, '#2b1d14', { p: [hx + s * (0.088 + 0.03) + j * 0.014 * s, hy + 0.05, hz + 0.236], r: [0, 0, s * (0.5 + j * 0.25)], bone: H }, 0.003);
   }
   k.sphere(0.024, tint(skin, -0.12), { p: [hx, hy - 0.035, hz + 0.255], bone: H }, 8, 6);
-  k.torus(0.04, 0.009, '#7a2c22', { p: [hx, hy - 0.075, hz + 0.236], r: [0.25, 0, Math.PI], bone: H }, Math.PI);
+  k.torus(0.04, fem ? 0.012 : 0.009, fem ? '#c2465a' : '#7a2c22', { p: [hx, hy - 0.075, hz + 0.236], r: [0.25, 0, Math.PI], bone: H }, Math.PI);
   if (L.acc === 1) for (const s of [-1, 1]) {
     k.torus(0.055, 0.009, '#3a2a22', { p: [hx + s * 0.088, hy + 0.0, hz + 0.245], bone: H });
     if (s === 1) k.box(0.06, 0.012, 0.012, '#3a2a22', { p: [hx, hy + 0.005, hz + 0.25], bone: H }, 0.004);

@@ -1,6 +1,6 @@
 // Regras derivadas do catálogo (espelham as validações do servidor para a interface).
 import {
-  CONFIG, BUILDINGS, BUILDING_BY_ID, CROP_BY_ID, RECIPES, REGIONS, TOOLS, CROPS, ITEMS, MAX_LEVEL, LEVEL_XP,
+  CONFIG, REGION_BY_ID, TOOL_BY_ID, OBSTACLES, OBSTACLE_OF_REGION, type ObstacleDef, type FieldDef, FIELD_BY_ID, FIELD_SPEED, FIELD_YIELD, fieldPlots, BUILDINGS, BUILDING_BY_ID, CROP_BY_ID, RECIPES, REGIONS, TOOLS, CROPS, ITEMS, MAX_LEVEL, LEVEL_XP,
   type Cost,
 } from '../data/catalog.ts';
 import { store } from './state/store.ts';
@@ -12,7 +12,7 @@ export const capacity = () => {
 };
 
 export const plotCount = (e: string) => {
-  if (e === 'field') return CONFIG.plots[Math.max(1, store.lvl('farmhouse')) - 1];
+  if (e.startsWith('f:')) { const lv = store.lvl(e); return lv > 0 ? fieldPlots(FIELD_BY_ID[e.slice(2)], lv) : 0; }
   const g = store.lvl('greenhouse');
   return g > 0 ? CONFIG.greenhousePlots[g - 1] : 0;
 };
@@ -21,6 +21,7 @@ export const growMs = (crop: string, e: string) => {
   const w = store.lvl('well');
   let m = 1 - (w > 0 ? CONFIG.wellBonus[w - 1] : 0);
   if (e === 'greenhouse') m *= CONFIG.greenhouseSpeed;
+  else if (e.startsWith('f:')) m *= FIELD_SPEED[Math.max(1, store.lvl(e)) - 1];
   return CROP_BY_ID[crop].time * 1000 * m;
 };
 
@@ -67,10 +68,47 @@ export function projectOptions(): ProjectOption[] {
   }
   for (const r of REGIONS) {
     if (r.id === 'sitio' || store.hasRegion(r.id)) continue;
-    const needs = r.needs && store.lvl(r.needs) < 1 ? `Exige ${BUILDING_BY_ID[r.needs].name}` : null;
-    out.push({ k: `r:${r.id}`, title: `Expandir: ${r.name}`, desc: r.desc, level: r.level, cost: r.cost, locked: lv < r.level ? `Nível ${r.level}` : needs });
+    const o = OBSTACLE_OF_REGION[r.id];
+    out.push({ k: `r:${r.id}`, title: o ? `${o.name}: abrir ${r.name}` : `Expandir: ${r.name}`, desc: o?.desc ?? r.desc, level: r.level, cost: r.cost, locked: o ? obstacleInfo(o).lock : lv < r.level ? `Nível ${r.level}` : null });
+  }
+  for (const o of OBSTACLES) {
+    if (o.region || store.hasObs(o.id)) continue;
+    const info = obstacleInfo(o);
+    out.push({ k: info.k, title: o.name, desc: o.desc, level: info.lvReq, cost: info.cost, locked: info.lock ?? (store.hasRegion('rio') ? null : 'Abra a Margem do Rio') });
   }
   return out.sort((a, b) => (a.locked ? 1 : 0) - (b.locked ? 1 : 0) || a.level - b.level);
 }
 
-export const entityKeyFor = (k: string) => (k.startsWith('r:') ? `region:${k.slice(2)}` : k.slice(2));
+export const entityKeyFor = (k: string) => (k.startsWith('r:') ? `region:${k.slice(2)}` : k.startsWith('o:') ? `obs:${k.slice(2)}` : k.slice(2));
+
+/** Estado de um obstáculo físico: requisitos, custo, obra e se já foi removido. */
+export function obstacleInfo(o: ObstacleDef) {
+  const reg = o.region ? REGION_BY_ID[o.region] : null;
+  const lvReq = reg?.level ?? o.level ?? 1;
+  const cost: Cost = reg ? reg.cost : o.cost ?? {};
+  const needs = reg?.needs ?? o.needs;
+  const k = o.region ? `r:${o.region}` : `o:${o.id}`;
+  const cleared = o.region ? store.hasRegion(o.region) : store.hasObs(o.id);
+  const proj = store.ents[entityKeyFor(k)]?.state.proj;
+  const tool = o.tool ? TOOL_BY_ID[o.tool.t].tiers[o.tool.tier - 1] : null;
+  const lock = level() < lvReq ? `Nível ${lvReq}`
+    : o.tool && store.tool(o.tool.t) < o.tool.tier ? `Precisa de ${tool!.name}`
+    : needs && store.lvl(needs) < 1 ? `Exige ${BUILDING_BY_ID[needs].name}` : null;
+  let need = cost.coins ?? 0, got = Math.min(need, proj?.got.coins ?? 0);
+  for (const [it, q] of Object.entries(cost.items ?? {})) { const p = ITEMS.find((x) => x.id === it)?.price ?? 1; need += q * p; got += Math.min(q, proj?.got[it] ?? 0) * p; }
+  return { lvReq, cost, needs, k, cleared, proj, tool, lock, pct: proj ? Math.round((100 * got) / Math.max(1, need)) : 0, name: reg?.name };
+}
+
+/** Estado de um campo especializado: nível, canteiros e o que falta para abrir/melhorar. */
+export function fieldInfo(f: FieldDef) {
+  const e = `f:${f.id}`, lv = store.lvl(e);
+  const next = lv === 0 ? f.open : f.ups[lv - 1] ?? null;
+  const reqLv = lv === 0 ? f.level : f.level + 3 * lv;
+  const lock = !store.hasRegion(f.region) ? `Região ${REGION_BY_ID[f.region].name} fechada`
+    : level() < reqLv ? `Nível ${reqLv}`
+    : lv === 0 && f.needs && store.lvl(f.needs) < 1 ? `Exige ${BUILDING_BY_ID[f.needs].name}`
+    : lv === 0 && f.obs && !store.hasObs(f.obs) ? 'Reconstrua as pontes do rio' : null;
+  return { e, lv, next, reqLv, lock, plots: plotCount(e) };
+}
+
+export const fieldYield = (e: string) => (e.startsWith('f:') ? FIELD_YIELD[Math.max(1, store.lvl(e)) - 1] : 0);

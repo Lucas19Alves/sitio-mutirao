@@ -4,14 +4,17 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BUILDING_BY_ID, REGIONS, WORLD_NODES, NODE_BY_ID, CROP_BY_ID, ITEM_BY_ID, TOOL_BY_ID, WORKER_BY_ID,
-  MAP_W, MAP_H, TILE, FIELD, PLOT_COUNT, SPAWN, plotTile, doorTile, buildWalkGrid, regionAt, isWater, workerPeriodMs,
-  type WorldNode, type ToolId,
+  MAP_W, MAP_H, TILE, SPAWN, FIELDS, OBSTACLES, PET_BY_ID, RIVER, fieldPlot, doorTile, buildWalkGrid, regionAt, isWater, workerPeriodMs,
+  type WorldNode, type ToolId, type FieldDef, type ObstacleDef,
 } from '../../data/catalog.ts';
 import { store } from '../state/store.ts';
 import { bus } from '../bus.ts';
 import { realtime, type PosMsg, type PresenceMeta } from '../multiplayer/realtime.ts';
 import { findPath } from '../systems/pathfinding.ts';
-import { growMs, plotCount, capacity } from '../rules.ts';
+import { growMs, plotCount, capacity, fieldYield, boardSlots, obstacleInfo } from '../rules.ts';
+import { normalizeLook } from '../art/characters.ts';
+import { obstacleModel, obstacleSite, petModel, signPosts } from './kit/props.ts';
+import { Kit } from './kit/geo.ts';
 import { errorText } from '../../utils/errors.ts';
 import { play } from '../audio.ts';
 import { gfx } from '../gfx.ts';
@@ -36,12 +39,17 @@ const RADIUS: Record<string, number> = { tree_oak: 0.3, tree_big: 0.42, apple_tr
 const CHIP: Record<string, string[]> = { axe: ['#d9a766', '#a8713f', '#7cb342'], pickaxe: ['#a7adb2', '#868c92', '#cfd4d8'], shovel: ['#c97b4a', '#ead69e'], sickle: ['#8fcf4a', '#6fb043'] };
 const ENTER_R = 1.55, EXIT_R = 2.35, CLOSE_MS = 650;
 
-export type Target = { kind: 'node'; id: string } | { kind: 'building'; id: string } | { kind: 'plot'; e: 'field'; i: number } | { kind: 'sign'; region: string };
-export type Zone = { k: 'b'; id: string } | { k: 'field' } | { k: 'region'; id: string } | null;
+export type Target = { kind: 'node'; id: string } | { kind: 'building'; id: string } | { kind: 'plot'; e: string; i: number } | { kind: 'obs'; id: string } | { kind: 'field'; f: string };
+export type Zone = { k: 'b'; id: string } | { k: 'field'; f: string } | { k: 'obs'; id: string } | null;
 
 interface NodeView { n: WorldNode; def: (typeof NODE_BY_ID)[string]; idx: number; x: number; z: number; rot: number; sc: number; off: boolean; anim: number; kind: 'shake' | 'pop' | ''; r: number }
 interface BView { def: (typeof BUILDINGS)[number]; g: THREE.Group; main: THREE.Group; site: THREE.Mesh; lot: THREE.Mesh; blades?: THREE.Mesh; model: BuildingModel; built: boolean | null; smokeAt: number; ready: Tag; badge: Tag; bar: Tag; pop: number }
-interface Work { kind: 'node' | 'plot'; nv?: NodeView; plot?: number; action?: 'reap' | 'plant'; clip: string; hits: number; need: number; last: number; x: number; z: number; reach: number }
+interface Work { kind: 'node' | 'plot'; nv?: NodeView; plot?: number; e?: string; action?: 'reap' | 'plant'; clip: string; hits: number; need: number; last: number; x: number; z: number; reach: number }
+interface PlotView { g: THREE.Group; crop: THREE.Mesh; key: string; pop: number }
+interface FieldView { def: FieldDef; plots: PlotView[]; board: THREE.Mesh; text: string }
+interface OView { def: ObstacleDef; g: THREE.Group; site: THREE.Mesh; tag: Tag; gone: boolean | null; anim: number; html: string }
+interface Cust { slot: number; key: string; av: Avatar3D; tag: Tag; state: 'in' | 'out'; tx: number; tz: number; t: number; html: string }
+interface PetView { id: string; mesh: THREE.Mesh; x: number; z: number; h: number; t: number }
 interface Helper { id: string; av: Avatar3D; path: [number, number][]; state: 'go' | 'work' | 'back' | 'drop'; t: number; node: [number, number]; home: [number, number] }
 
 export interface WorldInit { me: { id: string; name: string; look: Record<string, number> } }
@@ -60,11 +68,17 @@ export class Game3D {
   private nodeCells = new Map<number, NodeView[]>();
   private inst = new Map<string, { full: THREE.InstancedMesh; off: THREE.InstancedMesh; list: NodeView[] }>();
   private pending = new Set<string>();
-  private pendingPlots = new Set<number>();
-  private plots: { g: THREE.Group; crop: THREE.Mesh; key: string; pop: number }[] = [];
+  private pendingPlots = new Set<string>();
+  private fviews: FieldView[] = [];
+  private fieldSeed: Record<string, string> = {};
+  private oviews: OView[] = [];
+  private custs = new Map<number, Cust>();
+  private leaving: Cust[] = [];
+  private pets = new Map<string, PetView>();
+  private petGeo = new Map<string, THREE.BufferGeometry>();
+  private flags: Record<string, THREE.Mesh> = {};
   private bviews: Record<string, BView> = {};
   private locks: Record<string, THREE.Group> = {};
-  private signs: Record<string, THREE.Vector3> = {};
   private helpers = new Map<string, Helper>();
   private grid = new Uint8Array(MAP_W * MAP_H);
   private move = new Uint8Array(MAP_W * MAP_H);
@@ -94,7 +108,6 @@ export class Game3D {
   private lastSig = '';
   private moving = false;
   private firstRefresh = true;
-  private seed = '';
   private offs: (() => void)[] = [];
   private timers: number[] = [];
   private tmp = new THREE.Vector3();
@@ -109,15 +122,15 @@ export class Game3D {
     this.drops = new Drops(this.eng.scene);
     this.smoke = new Smoke(this.eng.scene);
     this.bubble = this.overlay.tag('', 'w-bubble', new THREE.Vector3(), 2.15); this.bubble.on = false;
-    try { this.seed = localStorage.getItem('sm-seed') ?? ''; } catch { /* sem storage */ }
 
     this.buildNodes();
-    this.buildPlots();
+    this.buildFields();
     this.buildBuildings();
     this.buildLocks();
+    this.buildObstacles();
     const fh = BUILDING_BY_ID.farmhouse.spot;
     const flowers = WORLD_NODES.filter((n) => n.t === 'wildflower' || n.t === 'grass').slice(0, 10).map((n) => [n.x + 0.5, n.y + 0.5] as [number, number]);
-    this.ambient = new Ambient(this.eng.scene, [fh.x - 1.2, fh.y + fh.h + 0.8], [[FIELD.x - 1, FIELD.y + 2], [FIELD.x + 9, FIELD.y + 1], ...flowers]);
+    this.ambient = new Ambient(this.eng.scene, [fh.x - 1.2, fh.y + fh.h + 0.8], [[FIELDS[0].x - 1, FIELDS[0].y + 2], [FIELDS[1].x + 5, FIELDS[1].y + 1], ...flowers]);
 
     const saved = this.loadPos();
     this.me = new Avatar3D(this.eng.scene, this.overlay, saved.x, saved.z, meInfo.name, meInfo.look, true);
@@ -140,7 +153,9 @@ export class Game3D {
       bus.on('zoom', (f: number) => this.setDist(this.dist / f)),
       bus.on('joy', (v: { x: number; y: number }) => { this.joy = v; }),
       bus.on('look', (look: Record<string, number>) => this.me.setLook(look)),
-      bus.on('seed', (c: string) => { this.seed = c; }),
+      bus.on('fieldseed', (v: { f: string; c: string }) => { this.fieldSeed[v.f] = v.c; }),
+      bus.on('members', () => this.refreshPets()),
+      bus.on('goto', (t: Target) => this.interact(t)),
       bus.on('focus', (t: { x: number; y: number }) => { this.camFocus = { p: new THREE.Vector3(t.x, 0, t.y), until: performance.now() + 2600 }; }),
       bus.on('recenter', () => { this.camFocus = null; }),
       bus.on('ctxpanel', (on: boolean) => { this.ctxOpen = on; }),
@@ -148,6 +163,7 @@ export class Game3D {
       gfx.subscribe(() => this.eng.applyQuality()),
     );
     this.onPresence(realtime.metas, true);
+    this.refreshPets();
     for (const p of realtime.lastPos.values()) this.onRemotePos(p);
     this.sendPos(true);
     this.timers.push(window.setInterval(() => this.tick500(), 500));
@@ -201,17 +217,29 @@ export class Game3D {
     I.full.instanceMatrix.needsUpdate = true; I.off.instanceMatrix.needsUpdate = true;
   }
 
-  private buildPlots() {
-    const soil = soilGeometry(false), locked = soilGeometry(true);
-    for (let i = 0; i < PLOT_COUNT; i++) {
-      const t = plotTile(i);
-      const g = new THREE.Group(); g.position.set(t.x, 0, t.y);
-      const s = new THREE.Mesh(soil, matVC); s.receiveShadow = true; s.name = 'soil';
-      const l = new THREE.Mesh(locked, matVC); l.name = 'locked'; l.visible = false; l.castShadow = true;
-      const crop = new THREE.Mesh(soil, matVC); crop.castShadow = true; crop.visible = false;
-      g.add(s, l, crop);
-      this.eng.scene.add(g);
-      this.plots.push({ g, crop, key: '', pop: 0 });
+  private buildFields() {
+    const soil = soilGeometry(false), locked = soilGeometry(true), posts = signPosts();
+    for (const def of FIELDS) {
+      const plots: PlotView[] = [];
+      for (let i = 0; i < def.cols * def.rows; i++) {
+        const t = fieldPlot(def, i);
+        const g = new THREE.Group(); g.position.set(t.x, 0, t.y);
+        const sl = new THREE.Mesh(soil, matVC); sl.receiveShadow = true; sl.name = 'soil';
+        const l = new THREE.Mesh(locked, matVC); l.name = 'locked'; l.visible = false; l.castShadow = true;
+        const crop = new THREE.Mesh(soil, matVC); crop.castShadow = true; crop.visible = false;
+        g.add(sl, l, crop);
+        this.eng.scene.add(g);
+        plots.push({ g, crop, key: '', pop: 0 });
+      }
+      const sign = new THREE.Group();
+      const p = new THREE.Mesh(posts, matVC); p.castShadow = true; sign.add(p);
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.62), new THREE.MeshBasicMaterial({ map: labelTexture(['…']), transparent: true }));
+      board.position.set(0, 0.92, 0.0);
+      sign.add(board);
+      const sx = def.x + 0.9, sz = def.y - 0.85;
+      sign.position.set(sx, heightAt(sx, sz), sz); sign.rotation.x = -0.15;
+      this.eng.scene.add(sign);
+      this.fviews.push({ def, plots, board, text: '' });
     }
   }
 
@@ -252,10 +280,26 @@ export class Game3D {
       const cx = Math.max(x + 1, Math.min(x + w - 1, SPAWN.x)), cz = Math.max(y + 1, Math.min(y + h - 1, SPAWN.y));
       const edge = [[cx, y - 0.6], [cx, y + h + 0.6], [x - 0.6, cz], [x + w + 0.6, cz]] as [number, number][];
       const best = edge.sort((a, b) => Math.hypot(a[0] - SPAWN.x, a[1] - SPAWN.y) - Math.hypot(b[0] - SPAWN.x, b[1] - SPAWN.y))[0];
-      const sign = grp.userData.sign as THREE.Group;
-      sign.position.set(best[0], heightAt(best[0], best[1]), best[1]);
-      this.signs[r.id] = sign.position.clone();
+      void best;
+      (grp.userData.sign as THREE.Group).visible = false;
     }
+  }
+
+  private buildObstacles() {
+    const site = obstacleSite();
+    OBSTACLES.forEach((def, i) => {
+      const g = new THREE.Group();
+      const m = new THREE.Mesh(obstacleModel(def.kind, i + 1), matVC); m.castShadow = true; m.receiveShadow = true;
+      const st = new THREE.Mesh(site, matVC); st.castShadow = true; st.visible = false;
+      g.add(m, st);
+      const bridge = def.kind === 'bridge';
+      const x = bridge ? def.at.x + 1 : def.at.x + 0.5, z = bridge ? def.at.y - 1.2 : def.at.y + 0.5;
+      g.position.set(x, heightAt(x, z), z);
+      g.rotation.y = Math.atan2(def.from.x - def.at.x, def.from.y - def.at.y);
+      this.eng.scene.add(g);
+      const tag = this.overlay.tag('', 'w-obs', new THREE.Vector3(x, 0, z), 2.1); tag.on = false;
+      this.oviews.push({ def, g, site: st, tag, gone: null, anim: 0, html: '' });
+    });
   }
 
   // ================================================================ entrada
@@ -309,7 +353,8 @@ export class Game3D {
   walkTo(tx: number, ty: number, then?: () => void) {
     if (!this.walkable(tx, ty)) {
       const r = regionAt(tx, ty);
-      if (r && !store.hasRegion(r)) bus.emit('toast', { kind: 'info', text: `${REGIONS.find((x) => x.id === r)!.name} ainda está fechado. Veja o projeto na placa.` });
+      if (r && !store.hasRegion(r)) bus.emit('toast', { kind: 'info', text: `${REGIONS.find((x) => x.id === r)!.name} ainda está fechado. Remova o obstáculo da estrada.` });
+      else if (r && ty >= RIVER.y0 && ty <= RIVER.y1 && !store.hasObs('pontes')) bus.emit('toast', { kind: 'info', text: 'As pontes estão quebradas. Reconstrua para atravessar.' });
       return false;
     }
     const p = findPath(this.grid, MAP_W, MAP_H, Math.floor(this.me.x), Math.floor(this.me.z), tx, ty);
@@ -342,8 +387,10 @@ export class Game3D {
       const d = doorTile(BUILDING_BY_ID[t.id].spot);
       this.approach([d, { x: d.x - 1, y: d.y }, { x: d.x + 1, y: d.y }, { x: d.x, y: d.y + 1 }], () => {});
     } else if (t.kind === 'plot') {
-      const p = plotTile(t.i); this.walkTo(p.x, p.y + 1);
-    } else { const s = this.signs[t.region]; if (s) this.walkTo(Math.floor(s.x), Math.floor(s.z)); }
+      const fd = FIELDS.find((f) => `f:${f.id}` === t.e); if (fd) { const p = fieldPlot(fd, t.i); this.walkTo(p.x, p.y + 1); }
+    } else if (t.kind === 'field') {
+      const fd = FIELDS.find((f) => f.id === t.f); if (fd) this.walkTo(fd.x + fd.cols, fd.y + fd.rows * 2);
+    } else { const o = OBSTACLES.find((x) => x.id === t.id); if (o) this.walkTo(o.from.x, o.from.y); }
   }
 
   /** Empurra o círculo do jogador para fora de tiles bloqueados, prédios e troncos/pedras. */
@@ -381,7 +428,7 @@ export class Game3D {
     if (mag > 0.08) {
       this.path = []; this.onArrive = null; this.forced = null; this.camFocus = null;
       const nx = ix / Math.hypot(ix, iz), nz = iz / Math.hypot(ix, iz);
-      speed = SPEED * (0.35 + 0.65 * mag);
+      speed = this.speed() * (0.35 + 0.65 * mag);
       const [x, z] = this.resolve(me.x + nx * speed * dt, me.z + nz * speed * dt);
       moved = Math.hypot(x - me.x, z - me.z) > 1e-4;
       me.x = x; me.z = z;
@@ -390,7 +437,7 @@ export class Game3D {
     } else if (this.path.length) {
       const [tx, tz] = this.path[0];
       const gx = tx + 0.5, gz = tz + 0.5, dx = gx - me.x, dz = gz - me.z, d = Math.hypot(dx, dz);
-      speed = SPEED;
+      speed = this.speed();
       const step = speed * dt;
       if (d <= step) { me.x = gx; me.z = gz; this.path.shift(); if (!this.path.length) this.arrive(); }
       else { const [x, z] = this.resolve(me.x + (dx / d) * step, me.z + (dz / d) * step); me.x = x; me.z = z; }
@@ -421,7 +468,7 @@ export class Game3D {
     let anim = moved ? (carrying ? 'carry' : speed > 3 ? 'run' : 'walk') : 'idle';
     if (this.work && !moved) anim = this.work.clip;
     if (!moved && this.pose && performance.now() < this.pose.until) anim = this.pose.name;
-    if (me.anim !== anim) me.play(anim);
+    if (me.anim !== anim) me.play(anim, 0.18, this.work && !moved ? 1 + 0.15 * store.perk('gat') : 1);
     me.update(dt);
     const sig = `${anim}${Math.round(me.heading * 10)}`;
     if (moved || sig !== this.lastSig) { this.sendPos(sig.slice(0, -1) !== this.lastSig.slice(0, -1)); this.lastSig = sig; }
@@ -430,6 +477,9 @@ export class Game3D {
 
     for (const a of this.remotes.values()) { a.follow(dt); a.update(dt); }
     this.stepHelpers(dt);
+    this.stepCustomers(dt);
+    this.stepPets(dt);
+    this.animateObstacles(dt);
     this.updateZones();
     this.animateNodes(dt);
     this.animatePlots(dt);
@@ -488,20 +538,22 @@ export class Game3D {
       if (!best || score < best.score) best = { v, score, d, reach };
     }
     // canteiros
-    let plot: { i: number; action: 'reap' | 'plant'; x: number; z: number } | null = null;
-    if (!moved && me.x > FIELD.x - 0.6 && me.x < FIELD.x + FIELD.cols * 2 + 0.6 && me.z > FIELD.y - 0.6 && me.z < FIELD.y + FIELD.rows * 2 + 0.6) {
-      const count = plotCount('field'), slots = store.ents.field?.state.p ?? [];
+    let plot: { e: string; i: number; action: 'reap' | 'plant'; x: number; z: number } | null = null;
+    const fv = moved ? null : this.fieldAt(me.x, me.z, 0.6);
+    if (fv) {
+      const e = `f:${fv.def.id}`, count = plotCount(e), slots = store.ents[e]?.state.p ?? [];
+      const seed = this.seedFor(fv.def);
       let bd = 1.25;
       for (let i = 0; i < count; i++) {
-        if (this.pendingPlots.has(i)) continue;
-        const p = plotTile(i), cx = p.x + 1, cz = p.y + 1, d = Math.hypot(cx - me.x, cz - me.z);
+        if (this.pendingPlots.has(`${e}:${i}`)) continue;
+        const p = fieldPlot(fv.def, i), cx = p.x + 1, cz = p.y + 1, d = Math.hypot(cx - me.x, cz - me.z);
         if (d > bd) continue;
         const s = slots[i];
-        if (s && s[1] + growMs(s[0], 'field') <= store.now()) {
+        if (s && s[1] + growMs(s[0], e) <= store.now()) {
           const def = CROP_BY_ID[s[0]];
           if (def.tool && store.tool(def.tool) < 1) { blockedMsg = `🔒 ${TOOL_BY_ID[def.tool].tiers[0].name}`; continue; }
-          plot = { i, action: 'reap', x: cx, z: cz }; bd = d;
-        } else if (!s && this.seed && CROP_BY_ID[this.seed] && (store.farm?.coins ?? 0) >= CROP_BY_ID[this.seed].seed && (store.farm?.level ?? 1) >= CROP_BY_ID[this.seed].level) { plot = { i, action: 'plant', x: cx, z: cz }; bd = d; }
+          plot = { e, i, action: 'reap', x: cx, z: cz }; bd = d;
+        } else if (!s && seed && (store.farm?.coins ?? 0) >= CROP_BY_ID[seed].seed) { plot = { e, i, action: 'plant', x: cx, z: cz }; bd = d; }
       }
     }
     const bagFull = store.bagUsed() >= store.bagCap();
@@ -515,7 +567,7 @@ export class Game3D {
       this.forced = null;
       this.path = [];
     } else if (plot) {
-      this.work = { kind: 'plot', plot: plot.i, action: plot.action, clip: plot.action === 'reap' ? 'harvest' : 'plant', hits: 0, need: 1, last: 0, x: plot.x, z: plot.z, reach: 1.6 };
+      this.work = { kind: 'plot', plot: plot.i, e: plot.e, action: plot.action, clip: plot.action === 'reap' ? 'harvest' : 'plant', hits: 0, need: 1, last: 0, x: plot.x, z: plot.z, reach: 1.6 };
     }
   }
 
@@ -558,24 +610,42 @@ export class Game3D {
         this.pending.delete(id);
         if (!r.ok) { this.denied(errorText(r.e)); this.refreshNodes(); }
       });
-    } else if (w.kind === 'plot' && w.plot !== undefined) {
-      const i = w.plot, p = plotTile(i);
+    } else if (w.kind === 'plot' && w.plot !== undefined && w.e) {
+      const i = w.plot, e = w.e, fv = this.fviews.find((f) => `f:${f.def.id}` === e);
+      if (!fv) return;
+      const p = fieldPlot(fv.def, i), pk = `${e}:${i}`;
       if (w.action === 'reap') {
-        const slot = store.ents.field?.state.p?.[i]; if (!slot) return;
+        const slot = store.ents[e]?.state.p?.[i]; if (!slot) return;
         const def = CROP_BY_ID[slot[0]];
-        const q = def.yield + (def.tool ? store.tool(def.tool) - 1 : 0);
-        this.pendingPlots.add(i);
-        this.plots[i].crop.visible = false; this.plots[i].key = '';
+        const q = def.yield + (def.tool ? store.tool(def.tool) - 1 : 0) + fieldYield(e);
+        this.pendingPlots.add(pk);
+        fv.plots[i].crop.visible = false; fv.plots[i].key = '';
         this.fx.burst(new THREE.Vector3(p.x + 1, 0.5, p.y + 1), ['#6fb043', '#8fcf4a', ITEM_BY_ID[slot[0]].icon.c], 10, { speed: 1.8, up: 2.5, size: 0.6 });
         this.collectFx(slot[0], q, new THREE.Vector3(p.x + 1, 0.6, p.y + 1));
-        void store.gather({ t: 'reap', e: 'field', i }, slot[0], q).then((r) => { this.pendingPlots.delete(i); if (!r.ok) this.denied(errorText(r.e)); this.refreshPlots(); });
+        void store.gather({ t: 'reap', e, i }, slot[0], q).then((r) => { this.pendingPlots.delete(pk); if (!r.ok) this.denied(errorText(r.e)); this.refreshPlots(); });
       } else {
-        const c = this.seed;
-        this.pendingPlots.add(i);
-        void store.act({ t: 'plant', e: 'field', i, c }).then((r) => { this.pendingPlots.delete(i); if (!r.ok) { this.denied(errorText(r.e)); this.seed = r.e?.startsWith('no_coins') ? '' : this.seed; } this.refreshPlots(); });
+        const c = this.seedFor(fv.def); if (!c) return;
+        this.pendingPlots.add(pk);
+        void store.act({ t: 'plant', e, i, c }).then((r) => { this.pendingPlots.delete(pk); if (!r.ok) this.denied(errorText(r.e)); this.refreshPlots(); });
       }
     }
   }
+
+  /** Campo em que o jogador está (com margem), se houver. */
+  private fieldAt(x: number, z: number, m: number) {
+    return this.fviews.find(({ def: f }) => x > f.x - m && x < f.x + f.cols * 2 + m && z > f.y - m && z < f.y + f.rows * 2 + m);
+  }
+
+  /** Cultura que o plantio automático usa num campo (o de flores deixa escolher). */
+  private seedFor(f: FieldDef): string | null {
+    const lv = store.farm?.level ?? 1;
+    const ok = f.crops.filter((c) => CROP_BY_ID[c].level <= lv);
+    if (!ok.length || store.lvl(`f:${f.id}`) < 1) return null;
+    const pick = this.fieldSeed[f.id];
+    return pick && ok.includes(pick) ? pick : ok[0];
+  }
+
+  private speed() { return SPEED * (1 + 0.07 * store.perk('spd')); }
 
   private collectFx(item: string, q: number, from: THREE.Vector3) {
     const me = this.me;
@@ -609,9 +679,9 @@ export class Game3D {
       const d = doorTile(b.spot);
       consider({ k: 'b', id: b.id }, `b:${b.id}`, d.x + 0.5, d.y + 0.35);
     }
-    for (const [id, p] of Object.entries(this.signs)) if (!store.hasRegion(id)) consider({ k: 'region', id }, `r:${id}`, p.x, p.z + 0.6);
-    const inField = me.x > FIELD.x - 0.4 && me.x < FIELD.x + FIELD.cols * 2 + 0.4 && me.z > FIELD.y - 0.4 && me.z < FIELD.y + FIELD.rows * 2 + 0.4;
-    if (inField && !best) best = { z: { k: 'field' }, key: 'field', d: 0 };
+    for (const o of this.oviews) if (o.gone === false && o.tag.on) consider({ k: 'obs', id: o.def.id }, `o:${o.def.id}`, o.def.from.x + 0.5, o.def.from.y + 0.5);
+    const fz = this.fieldAt(me.x, me.z, 0.4);
+    if (fz && !best) best = { z: { k: 'field', f: fz.def.id }, key: `f:${fz.def.id}`, d: 0 };
     const b = best as { z: Zone; key: string; d: number } | null;
     const now = performance.now();
     if (b) {
@@ -721,7 +791,8 @@ export class Game3D {
         if (!quiet) bus.emit('toast', { kind: 'ok', text: `${m.name} entrou na fazenda.` });
       } else a.setLook(m.look);
     }
-    for (const [u, a] of this.remotes) if (!ids.has(u)) { a.dispose(this.overlay); this.remotes.delete(u); bus.emit('toast', { kind: 'info', text: `${a.name} saiu. A fazenda continua salva.` }); }
+    this.refreshPets();
+    for (const [u, a] of this.remotes) if (!ids.has(u)) { a.dispose(this.overlay); this.remotes.delete(u); this.dropPet(u); bus.emit('toast', { kind: 'info', text: `${a.name} saiu. A fazenda continua salva.` }); }
   }
 
   private onRemotePos(p: PosMsg) {
@@ -753,6 +824,8 @@ export class Game3D {
     this.refreshBuildings();
     this.refreshPlots();
     this.refreshNodes();
+    this.refreshCustomers();
+    this.refreshPets();
     const used = store.bagUsed();
     this.me?.c.setPile(used / store.bagCap(), Object.keys(store.bag()).map((i) => ITEM_BY_ID[i]?.icon.c ?? '#b9824e'));
     this.firstRefresh = false;
@@ -761,8 +834,10 @@ export class Game3D {
   private rebuildGrid() {
     const regions = new Set(store.farm?.progression.regions ?? ['sitio']);
     const built = new Set(BUILDINGS.filter((b) => store.lvl(b.id) >= 1 || store.ents[b.id]?.state.proj).map((b) => b.id));
-    this.grid = buildWalkGrid(regions, built);
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const r = regionAt(x, y); this.move[y * MAP_W + x] = r && regions.has(r) && !isWater(x, y) ? 1 : 0; }
+    const obs = new Set(store.farm?.progression.obs ?? []);
+    this.grid = buildWalkGrid(regions, built, obs);
+    const bridges = obs.has('pontes');
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const r = regionAt(x, y); this.move[y * MAP_W + x] = r && regions.has(r) && !isWater(x, y) && (bridges || y < RIVER.y0 || y > RIVER.y1) ? 1 : 0; }
     this.boxes = BUILDINGS.filter((b) => built.has(b.id)).map((b) => {
       const s = (store.lvl(b.id) >= 1 ? this.bviews[b.id]?.model.solid : null) ?? [0.15, 0.3, b.spot.w - 0.15, b.spot.h - 0.3];
       return [b.spot.x + s[0], b.spot.y + s[1], b.spot.x + s[2], b.spot.y + s[3]] as [number, number, number, number];
@@ -776,20 +851,13 @@ export class Game3D {
   }
 
   private refreshLocks() {
-    const lv = store.farm?.level ?? 1;
     for (const r of REGIONS) {
       const g = this.locks[r.id]; if (!g) continue;
       const open = store.hasRegion(r.id);
       if (open) { if (g.visible) { g.visible = false; if (!this.firstRefresh) this.fx.burst(new THREE.Vector3(r.rect.x + r.rect.w / 2, 1, r.rect.y + r.rect.h / 2), ['#f6c445', '#ffffff', '#7fc14f'], 30, { speed: 4, up: 4 }); } continue; }
-      const proj = store.ents[`region:${r.id}`]?.state.proj;
-      const text = proj ? 'obra em andamento' : lv >= r.level ? 'pronto para abrir!' : `nível ${r.level}`;
-      if (g.userData.text !== text) {
-        g.userData.text = text;
-        const board = g.userData.board as THREE.Mesh;
-        const mat = board.material as THREE.MeshBasicMaterial;
-        mat.map?.dispose(); mat.map = labelTexture([r.name, text]); mat.needsUpdate = true;
-      }
     }
+    this.refreshObstacles();
+    this.world.setBridges(store.hasObs('pontes'));
   }
 
   private refreshBuildings() {
@@ -801,6 +869,7 @@ export class Game3D {
       v.site.visible = !built && !!proj;
       v.lot.visible = !built && !proj && store.hasRegion(b.region);
       v.badge.on = built && lvl >= 2; v.badge.el.textContent = `nv ${lvl}`;
+      this.levelLook(v, lvl);
       if (v.built === false && built && !this.firstRefresh) this.buildingDone(v);
       v.built = built;
       v.bar.on = !!proj;
@@ -827,24 +896,31 @@ export class Game3D {
   }
 
   private refreshPlots() {
-    const count = plotCount('field');
-    const slots = store.ents.field?.state.p ?? [];
-    const now = store.now();
-    this.plots.forEach((pl, i) => {
-      const locked = i >= count;
-      pl.g.getObjectByName('soil')!.visible = !locked;
-      pl.g.getObjectByName('locked')!.visible = locked;
-      const s = slots[i];
-      if (!s || locked || this.pendingPlots.has(i)) { pl.crop.visible = false; pl.key = ''; return; }
-      const stage = stageOf((now - s[1]) / growMs(s[0], 'field'));
-      const key = `${s[0]}_${stage}`;
-      if (pl.key !== key) {
-        pl.crop.geometry = cropGeometry(s[0], stage);
-        pl.crop.visible = true;
-        if (!this.firstRefresh) { pl.pop = 0.4; if (!pl.key) { play('dig'); this.fx.burst(new THREE.Vector3(plotTile(i).x + 1, 0.3, plotTile(i).y + 1), ['#8a6a3c', '#b98a50'], 6, { speed: 1.2, up: 1.5, size: 0.5 }); } }
-        pl.key = key;
+    const now = store.now(), lv = store.farm?.level ?? 1;
+    for (const fv of this.fviews) {
+      const e = `f:${fv.def.id}`, flv = store.lvl(e), count = plotCount(e), slots = store.ents[e]?.state.p ?? [];
+      fv.plots.forEach((pl, i) => {
+        const locked = i >= count;
+        pl.g.getObjectByName('soil')!.visible = !locked;
+        pl.g.getObjectByName('locked')!.visible = locked;
+        const s = slots[i];
+        if (!s || locked || this.pendingPlots.has(`${e}:${i}`)) { pl.crop.visible = false; pl.key = ''; return; }
+        const stage = stageOf((now - s[1]) / growMs(s[0], e));
+        const key = `${s[0]}_${stage}`;
+        if (pl.key !== key) {
+          pl.crop.geometry = cropGeometry(s[0], stage);
+          pl.crop.visible = true;
+          if (!this.firstRefresh) { pl.pop = 0.4; if (!pl.key) { play('dig'); const t = fieldPlot(fv.def, i); this.fx.burst(new THREE.Vector3(t.x + 1, 0.3, t.y + 1), ['#8a6a3c', '#b98a50'], 6, { speed: 1.2, up: 1.5, size: 0.5 }); } }
+          pl.key = key;
+        }
+      });
+      const text = flv ? `nível ${flv} · ${count} canteiros` : !store.hasRegion(fv.def.region) ? 'região fechada' : lv < fv.def.level ? `abre no nível ${fv.def.level}` : 'pronto para abrir!';
+      if (fv.text !== text) {
+        fv.text = text;
+        const mat = fv.board.material as THREE.MeshBasicMaterial;
+        mat.map?.dispose(); mat.map = labelTexture([fv.def.name, text], { font: 58 }); mat.needsUpdate = true;
       }
-    });
+    }
   }
 
   private refreshNodes() {
@@ -868,7 +944,7 @@ export class Game3D {
   }
 
   private animatePlots(dt: number) {
-    for (const pl of this.plots) {
+    for (const fv of this.fviews) for (const pl of fv.plots) {
       if (pl.pop <= 0) continue;
       pl.pop = Math.max(0, pl.pop - dt);
       const k = 1 - pl.pop / 0.4;
@@ -882,7 +958,7 @@ export class Game3D {
       if (!v.main.visible) continue;
       const working = (store.ents[v.def.id]?.state.q?.length ?? 0) > 0;
       if (v.blades) v.blades.rotation.z -= dt * (working ? 2.4 : 0.5);
-      if (v.pop > 0) { v.pop = Math.max(0, v.pop - dt); const k = 1 - v.pop / 0.9; v.main.scale.set(1 + (1 - k) * 0.08, Math.max(0.15, easeBack(k)), 1 + (1 - k) * 0.08); }
+      if (v.pop > 0) { v.pop = Math.max(0, v.pop - dt); const k = 1 - v.pop / 0.9, b = v.main.userData.base ?? 1; v.main.scale.set(b * (1 + (1 - k) * 0.08), b * Math.max(0.15, easeBack(k)), b * (1 + (1 - k) * 0.08)); }
       const s = v.model.anchors.smoke;
       if (s && gfx.quality !== 'low' && (working || v.def.id === 'farmhouse') && now > v.smokeAt) {
         v.smokeAt = now + (working ? 450 : 1300);
@@ -896,6 +972,7 @@ export class Game3D {
     this.refreshNodes();
     this.refreshPlots();
     this.refreshBuildings();
+    this.refreshCustomers();
     bus.emit('minimap', this.snapshot());
   }
 
@@ -904,6 +981,177 @@ export class Game3D {
     const p = this.me.pos.clone().setY(1.6);
     if (big) this.fx.burst(p, ['#f6c445', '#e2574c', '#4a9fd8', '#7fc14f', '#ffffff', '#9152b8'], 40, { speed: 3.5, up: 5, size: 0.45, life: 1.5, gravity: 5 });
     else this.fx.burst(p, ['#f6c445', '#ffffff'], 14, { speed: 2, up: 3, size: 0.35 });
+  }
+
+  // ================================================================ obstáculos físicos
+  private refreshObstacles() {
+    for (const o of this.oviews) {
+      const info = obstacleInfo(o.def);
+      if (info.cleared) {
+        if (o.gone === false && !this.firstRefresh) this.removeObstacle(o);
+        else if (o.gone === null) o.g.visible = false;
+        o.gone = true; o.tag.on = false;
+        continue;
+      }
+      o.gone = false;
+      o.site.visible = !!info.proj;
+      const fr = regionAt(o.def.from.x, o.def.from.y);
+      o.tag.on = !!fr && store.hasRegion(fr);
+      const status = info.proj ? `obra ${info.pct}%` : info.lock ?? 'pronto para remover!';
+      const html = `<b>${escapeHtml(o.def.name)}</b><span class="${info.lock && !info.proj ? 'lock' : 'go'}">${escapeHtml(status)}</span>${info.proj ? `<i style="--p:${info.pct}%"></i>` : ''}`;
+      if (o.html !== html) { o.html = html; o.tag.el.innerHTML = html; }
+    }
+  }
+
+  /** O obstáculo afunda e encolhe com poeira e confete; o caminho se abre. */
+  private removeObstacle(o: OView) {
+    o.anim = 1.3;
+    play('build');
+    const p = o.g.position;
+    for (let i = 0; i < 4; i++) this.fx.burst(new THREE.Vector3(p.x + (i - 1.5) * 0.8, 0.3, p.z), ['#e6dccb', '#d6c8ad', '#b98a50'], 8, { speed: 2.5, up: 2, size: 1.1, gravity: 1, life: 1.2 });
+    this.fx.burst(new THREE.Vector3(p.x, 2.2, p.z), ['#f6c445', '#e2574c', '#4a9fd8', '#7fc14f', '#ffffff'], 46, { speed: 4.5, up: 5, size: 0.5, life: 1.8, gravity: 5 });
+    this.overlay.float('Caminho livre!', p.clone().setY(2.6), 'w-float big');
+    this.camFocus = { p: p.clone(), until: performance.now() + 2200 };
+    if (!gfx.reduceMotion) this.shake = 0.4;
+  }
+
+  private animateObstacles(dt: number) {
+    for (const o of this.oviews) {
+      if (o.anim <= 0) continue;
+      o.anim = Math.max(0, o.anim - dt);
+      const k = 1 - o.anim / 1.3;
+      o.g.scale.setScalar(Math.max(0.01, 1 - k * k));
+      o.g.position.y = -k * 0.5;
+      o.g.rotation.z = Math.sin(k * 30) * 0.05 * (1 - k);
+      if (o.anim === 0) o.g.visible = false;
+    }
+  }
+
+  /** Prédios melhorados crescem um pouco e ganham uma bandeira (azul, dourada, vermelha). */
+  private levelLook(v: BView, lvl: number) {
+    const base = 1 + Math.min(0.12, 0.035 * Math.max(0, lvl - 1));
+    v.main.userData.base = base;
+    if (v.pop <= 0) v.main.scale.setScalar(base);
+    let flag = this.flags[v.def.id];
+    if (lvl >= 2 && !flag) {
+      const top = v.model.anchors.top;
+      flag = new THREE.Mesh(flagGeo(lvl), matVC); flag.castShadow = true;
+      flag.position.set(top[0] + 0.35, Math.max(0, top[1] - 0.4), top[2]);
+      flag.userData.lvl = lvl;
+      v.main.add(flag); this.flags[v.def.id] = flag;
+    } else if (flag && flag.userData.lvl !== lvl) { flag.geometry = flagGeo(lvl); flag.userData.lvl = lvl; }
+  }
+
+  // ================================================================ clientes no balcão
+  private queueSpot(i: number): [number, number] {
+    const d = doorTile(BUILDING_BY_ID.order_board.spot);
+    return [d.x + 1.5 + i * 0.85, d.y + 0.6];
+  }
+
+  /** Cada pedido aberto é um cliente na fila; quando é atendido ele agradece e vai embora. */
+  private refreshCustomers() {
+    if (store.lvl('order_board') < 1) return;
+    const list = Object.values(store.orders).filter((o) => o.slot < 99).sort((a, b) => a.slot - b.slot).slice(0, boardSlots());
+    const seen = new Set<number>();
+    const bag = store.bag();
+    list.forEach((o, i) => {
+      seen.add(o.slot);
+      const key = `${o.npc}|${JSON.stringify(o.items)}`;
+      let c = this.custs.get(o.slot);
+      if (c && c.key !== key) { this.dismiss(c, true); c = undefined; }
+      const [qx, qz] = this.queueSpot(i);
+      if (!c) {
+        const sx = qx + 7, sz = qz + 1.2;
+        const av = new Avatar3D(this.eng.scene, this.overlay, sx, sz, `${o.order_key === 'vip' ? '⭐ ' : ''}${o.npc}`, npcLook(o.npc), false);
+        av.tag.el.classList.add('npc');
+        if (o.order_key === 'vip') av.tag.el.classList.add('vip');
+        const tag = this.overlay.tag('', 'w-order', new THREE.Vector3(sx, 0, sz), 2.35);
+        c = { slot: o.slot, key, av, tag, state: 'in', tx: qx, tz: qz, t: 0, html: '' };
+        this.custs.set(o.slot, c);
+      }
+      c.tx = qx; c.tz = qz;
+      const ok = Object.entries(o.items).every(([it, q]) => store.qty(it) + (bag[it] ?? 0) >= q);
+      const html = `<div class="ord${o.order_key === 'vip' ? ' vip' : ''}${ok ? ' ok' : ''}">${Object.entries(o.items).map(([it, q]) => `<span><img src="${iconUrl(it, 32)}" alt="">${q}</span>`).join('')}<em>🪙${o.reward.coins}${o.reward.cr ? ` 💎${o.reward.cr}` : ''}</em></div>`;
+      if (c.html !== html) { c.html = html; c.tag.el.innerHTML = html; }
+      c.tag.on = c.state === 'in' && Math.hypot(c.av.x - qx, c.av.z - qz) < 0.4;
+    });
+    for (const [slot, c] of this.custs) if (!seen.has(slot)) this.dismiss(c, false);
+  }
+
+  private dismiss(c: Cust, thanked: boolean) {
+    this.custs.delete(c.slot);
+    c.state = 'out'; c.tag.on = false; c.t = thanked ? 1.0 : 0;
+    c.tx = c.av.x + 9; c.tz = c.av.z + 1.5;
+    if (thanked) {
+      c.av.play('celebrate');
+      this.overlay.float('😊 Obrigado!', c.av.pos.clone().setY(2.2), 'w-float big');
+      this.fx.burst(c.av.pos.clone().setY(1.5), ['#f6c445', '#ffffff'], 12, { speed: 2, up: 3, size: 0.4 });
+    }
+    this.leaving.push(c);
+  }
+
+  private stepCustomers(dt: number) {
+    const all = [...this.custs.values(), ...this.leaving];
+    for (const c of all) {
+      const av = c.av;
+      if (c.t > 0) { c.t -= dt; av.update(dt); continue; }
+      const dx = c.tx - av.x, dz = c.tz - av.z, d = Math.hypot(dx, dz);
+      if (d > 0.05) {
+        const step = Math.min(d, 1.9 * dt);
+        av.x += (dx / d) * step; av.z += (dz / d) * step;
+        av.heading = turn(av.heading, Math.atan2(dx, dz), dt * 10);
+        if (av.anim !== 'walk') av.play('walk');
+      } else {
+        av.heading = turn(av.heading, Math.PI, dt * 6);
+        if (av.anim !== 'idle') av.play('idle');
+        if (c.state === 'out') { av.dispose(this.overlay); this.overlay.remove(c.tag); this.leaving.splice(this.leaving.indexOf(c), 1); continue; }
+      }
+      c.tag.pos.set(av.x, 0, av.z);
+      if (c.state === 'in' && d < 0.4 && !c.tag.on && c.html) c.tag.on = true;
+      av.place(); av.update(dt);
+    }
+  }
+
+  // ================================================================ pets
+  private refreshPets() {
+    const owners = [this.meInfo.id, ...this.remotes.keys()];
+    for (const uid of owners) {
+      const eq = store.members.find((m) => m.user_id === uid)?.pets?.eq ?? null;
+      const pv = this.pets.get(uid);
+      if (pv && pv.id === eq) continue;
+      if (pv) this.dropPet(uid);
+      const def = eq ? PET_BY_ID[eq] : null;
+      if (!def) continue;
+      let geo = this.petGeo.get(def.id);
+      if (!geo) { geo = petModel(def.id, def.color, def.color2); this.petGeo.set(def.id, geo); }
+      const mesh = new THREE.Mesh(geo, matVC); mesh.castShadow = true;
+      const owner = uid === this.meInfo.id ? this.me : this.remotes.get(uid);
+      const x = (owner?.x ?? SPAWN.x) - 0.6, z = (owner?.z ?? SPAWN.y) + 0.4;
+      mesh.position.set(x, heightAt(x, z), z);
+      this.eng.scene.add(mesh);
+      this.pets.set(uid, { id: def.id, mesh, x, z, h: 0, t: 0 });
+      if (uid === this.meInfo.id && !this.firstRefresh) this.fx.burst(mesh.position.clone().setY(0.5), ['#f6c445', '#ffffff', '#ef97b7'], 14, { speed: 1.6, up: 2, size: 0.4 });
+    }
+  }
+
+  private dropPet(uid: string) { const pv = this.pets.get(uid); if (pv) { pv.mesh.removeFromParent(); this.pets.delete(uid); } }
+
+  /** O pet segue o dono um pouco atrás e ao lado, saltitando quando anda. */
+  private stepPets(dt: number) {
+    for (const [uid, pv] of this.pets) {
+      const o = uid === this.meInfo.id ? this.me : this.remotes.get(uid);
+      if (!o) continue;
+      const bx = o.x - Math.sin(o.heading) * 0.75 + Math.cos(o.heading) * 0.45, bz = o.z - Math.cos(o.heading) * 0.75 - Math.sin(o.heading) * 0.45;
+      const dx = bx - pv.x, dz = bz - pv.z, d = Math.hypot(dx, dz);
+      const moving = d > 0.12;
+      if (d > 7) { pv.x = bx; pv.z = bz; }
+      else if (moving) { const sp = Math.min(d, (2.2 + d * 2.2) * dt); pv.x += (dx / d) * sp; pv.z += (dz / d) * sp; pv.h = turn(pv.h, Math.atan2(dx, dz), dt * 10); }
+      else pv.h = turn(pv.h, Math.atan2(o.x - pv.x, o.z - pv.z), dt * 3);
+      pv.t += dt * (moving ? 13 : 2.5);
+      const hop = moving ? Math.abs(Math.sin(pv.t)) * 0.12 : Math.max(0, Math.sin(pv.t)) * 0.015;
+      pv.mesh.position.set(pv.x, Math.max(0, heightAt(pv.x, pv.z)) + hop, pv.z);
+      pv.mesh.rotation.set(moving ? Math.sin(pv.t * 2) * 0.06 : 0, pv.h, 0);
+    }
   }
 
   // ================================================================ posição local (só no aparelho)
@@ -943,4 +1191,26 @@ function easeBack(t: number) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * 
 export function createWorld(host: HTMLElement, me: WorldInit['me']) {
   const g = new Game3D(host, me);
   return { destroy: () => g.destroy(), game: g };
+}
+
+/** Aparência estável de um cliente a partir do nome (todos os jogadores veem igual). */
+function npcLook(name: string) {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 16777619) >>> 0;
+  const at = (n: number, sh: number) => (h >>> sh) % n;
+  return normalizeLook({ body: at(2, 1), skin: at(6, 3), hair: at(6, 6), hairColor: at(7, 9), shirt: at(4, 12), shirtColor: at(10, 15), pants: at(6, 18), hat: at(4, 21), hatColor: at(10, 24), acc: 0, shoes: at(6, 27) });
+}
+
+const flagCache = new Map<number, THREE.BufferGeometry>();
+function flagGeo(lvl: number) {
+  const key = Math.min(4, lvl);
+  let g = flagCache.get(key);
+  if (!g) {
+    const k = new Kit();
+    k.cyl(0.025, 0.03, 0.9, '#7a4b2a', { p: [0, 0.45, 0] }, 6);
+    k.box(0.36, 0.22, 0.02, ['#3a78c2', '#e0a81c', '#e2394f'][key - 2], { p: [0.19, 0.78, 0], wind: 1 }, 0.01);
+    k.sphere(0.04, '#f6c445', { p: [0, 0.92, 0] }, 6, 5);
+    g = k.build(); flagCache.set(key, g);
+  }
+  return g;
 }

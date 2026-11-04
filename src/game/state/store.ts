@@ -11,16 +11,21 @@ export interface Progression {
   quest: number;
   contract: number;
   stats: Record<string, number>;
+  obs?: string[];
+  mdone?: string[];
+  ms?: { side?: (GenMission | null)[]; daily?: { d: string; l: GenMission[] }; coop?: GenMission | null };
 }
+export interface GenMission { k: string; n: number; base: number; kind: 'side' | 'daily' | 'coop'; r: { coins: number; xp: number; cr: number }; done?: boolean }
+export interface Pets { own: Record<string, { xp: number }>; eq: string | null }
 export interface FarmRow {
   id: string; name: string; owner_id: string; invite_code: string;
-  level: number; xp: number; coins: number; reputation: number; rev: number;
+  level: number; xp: number; coins: number; crystals: number; reputation: number; rev: number;
   progression: Progression; nodes: Record<string, number>;
 }
 export interface Ent { k: string; kind: string; level: number; state: { p?: ([string, number] | null)[]; q?: [string, number][]; proj?: Project; w?: Record<string, { lv: number; at: number }> } }
 export interface Project { k: string; need: { coins?: number; items?: Record<string, number> }; got: Record<string, number>; by: Record<string, number>; at: number }
-export interface Order { slot: number; order_key: string; npc: string; items: Record<string, number>; reward: { coins: number; xp: number; rep: number; level?: number }; progress: { got?: Record<string, number>; by?: Record<string, number> }; status: string }
-export interface Member { user_id: string; username: string; role: string; stats: Record<string, number>; look: Record<string, number>; joined_at: string; bag?: Record<string, number>; bag_tier?: number }
+export interface Order { slot: number; order_key: string; npc: string; items: Record<string, number>; reward: { coins: number; xp: number; rep: number; level?: number; cr?: number }; progress: { got?: Record<string, number>; by?: Record<string, number>; at?: number }; status: string }
+export interface Member { user_id: string; username: string; role: string; stats: Record<string, number>; look: Record<string, number>; joined_at: string; bag?: Record<string, number>; bag_tier?: number; pets?: Pets; perks?: Record<string, number>; owned?: string[] }
 
 export type Action =
   | { t: 'harvest'; n: string }
@@ -38,7 +43,17 @@ export type Action =
   | { t: 'order'; o: number }
   | { t: 'skip'; o: number }
   | { t: 'cgive'; i: string; q: number }
-  | { t: 'quest' };
+  | { t: 'main'; m: string }
+  | { t: 'mref' }
+  | { t: 'mclaim'; s: 'side' | 'daily' | 'coop'; i?: number }
+  | { t: 'fopen'; f: string }
+  | { t: 'fup'; f: string }
+  | { t: 'rush'; k: 'plot'; e: string; i: number }
+  | { t: 'rush'; k: 'craft'; b: string }
+  | { t: 'pet'; p: string }
+  | { t: 'peq'; p: string | null }
+  | { t: 'perk'; p: string }
+  | { t: 'cosm'; c: string };
 
 export interface ActResult { ok: boolean; e?: string; [k: string]: unknown }
 
@@ -48,7 +63,7 @@ interface Delta {
   rev: number; by: string; now: number;
   farm: Omit<FarmRow, 'id' | 'name' | 'owner_id' | 'invite_code' | 'rev'>;
   inv: Record<string, number>; ents: Ent[]; gone: string[]; orders: Order[];
-  member?: { user_id: string; stats: Record<string, number>; bag?: Record<string, number>; bag_tier?: number };
+  member?: { user_id: string; stats: Record<string, number>; bag?: Record<string, number>; bag_tier?: number; pets?: Pets; perks?: Record<string, number>; owned?: string[] };
   res?: ActResult[]; dup?: boolean; noop?: boolean;
 }
 
@@ -122,6 +137,7 @@ class FarmStore {
     if (d.rev > this.farm.rev + 1) { void this.resync(); return; }
     const prevLevel = this.farm.level;
     const prevRegions = this.farm.progression.regions.length;
+    const prevObs = this.farm.progression.obs?.length ?? 0;
     this.offset = d.now - Date.now();
     Object.assign(this.farm, d.farm, { rev: d.rev });
     for (const [k, v] of Object.entries(d.inv)) { if (v > 0) this.inv[k] = v; else delete this.inv[k]; }
@@ -130,12 +146,13 @@ class FarmStore {
     for (const o of d.orders) this.orders[o.slot] = o;
     if (d.member) {
       const m = this.members.find((x) => x.user_id === d.member!.user_id);
-      if (m) { m.stats = d.member.stats; if (d.member.bag) m.bag = d.member.bag; if (d.member.bag_tier !== undefined) m.bag_tier = d.member.bag_tier; }
+      if (m) { const { user_id: _u, ...rest } = d.member; Object.assign(m, rest); }
     }
     this.emit();
     bus.emit('state:delta', { by: d.by, ents: d.ents.map((e) => e.k).concat(d.gone), nodes: true });
     if (this.farm.level > prevLevel) bus.emit('levelup', this.farm.level);
-    if (this.farm.progression.regions.length > prevRegions) bus.emit('regions');
+    if (this.farm.progression.regions.length > prevRegions || (this.farm.progression.obs?.length ?? 0) > prevObs) bus.emit('regions');
+    if (d.member && d.member.user_id !== this.myId) bus.emit('members');
   }
 
   setMembers(m: Member[]) { this.members = m; this.emit(); }
@@ -228,6 +245,12 @@ class FarmStore {
   nodeReady = (id: string) => (this.farm?.nodes[id] ?? 0) <= this.now();
   memberName = (uid: string) => this.members.find((m) => m.user_id === uid)?.username ?? 'alguém';
   projects = () => Object.values(this.ents).filter((e) => e.state.proj);
+  crystals = () => this.farm?.crystals ?? 0;
+  hasObs = (o: string) => !!this.farm?.progression.obs?.includes(o);
+  pets = (): Pets => this.me()?.pets ?? { own: {}, eq: null };
+  perk = (p: string) => this.me()?.perks?.[p] ?? 0;
+  owned = (c: string) => !!this.me()?.owned?.includes(c);
+  stat = (k: string) => this.farm?.progression.stats[k] ?? 0;
 }
 
 export const store = new FarmStore();

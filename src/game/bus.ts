@@ -16,4 +16,5 @@ export const bus = new Bus();
 
 export type PanelId =
   | 'inventory' | 'sell' | 'projects' | 'orders' | 'tools' | 'progress' | 'settings' | 'character'
-  | { b: string } | { plant: string; i: number };
+  | 'missions' | 'farm' | 'shop' | 'me' | 'fields'
+  | { b: string } | { plant: string; i: number } | { field: string } | { obs: string };

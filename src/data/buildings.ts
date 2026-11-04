@@ -58,8 +58,8 @@ export const BUILDINGS: BuildingDef[] = [
     ]),
   b('sales_cart', 'Carroça de Vendas', 'starter', 'sitio', 1, { x: 30, y: 20, w: 3, h: 2 }, {},
     'Venda qualquer item do estoque.', 'Preço base de mercado.', '#3f7fbf', '#d9a766'),
-  b('order_board', 'Quadro de Pedidos', 'starter', 'sitio', 1, { x: 34, y: 20, w: 2, h: 2 }, {},
-    'Pedidos dos moradores e contratos coletivos.', 'Vagas de pedido: 3 / 4 / 5.', '#6b8e23', '#a0673a', [
+  b('order_board', 'Balcão de Atendimento', 'starter', 'sitio', 1, { x: 34, y: 20, w: 2, h: 2 }, {},
+    'Os clientes fazem fila aqui com seus pedidos.', 'Clientes na fila: 3 / 4 / 5.', '#6b8e23', '#a0673a', [
       { level: 6, coins: 300, items: { plank: 12 } },
       { level: 14, coins: 1500, items: { beam: 10, nails: 10 } },
     ]),

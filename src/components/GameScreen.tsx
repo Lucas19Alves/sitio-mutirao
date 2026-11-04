@@ -9,7 +9,9 @@ import { iconUrl } from '../game/art/icons.ts';
 const TIPS = [
   'Tudo no estoque é de todos: combinem quem coleta e quem produz.',
   'Obras coletivas com 2 ou mais membros rendem bônus de cooperação.',
-  'Pedidos pagam cerca de 35% a mais do que vender no mercado.',
+  'Clientes no balcão pagam cerca de 35% a mais do que vender no mercado.',
+  'Cristais vêm de missões, marcos, clientes especiais e níveis. Use com calma!',
+  'Cada campo planta a sua cultura sozinho: é só andar pelos canteiros.',
   'Ferramentas melhores cortam com menos golpes e rendem mais.',
   'Toque num prédio para abrir a produção; colete quando o ícone aparecer.',
   'A fazenda continua salva quando você sai. Volte quando quiser.',
@@ -38,15 +40,15 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
       bus.on('boot:progress', (p: number) => setProgress(0.3 + p * 0.7)),
       bus.on('world:ready', () => alive && setPhase('ready')),
       bus.on('panel', (p: PanelId) => { setCtx(false); setPanel(p); }),
-      bus.on('zone', (z: { k: string; id?: string } | null) => {
-        const key = z ? `${z.k}:${z.id ?? ''}` : '';
+      bus.on('zone', (z: { k: string; id?: string; f?: string } | null) => {
+        const key = z ? `${z.k}:${z.id ?? z.f ?? ''}` : '';
         zoneRef.current = key;
         if (!z) { dismissed.current = ''; if (ctxRef.current) { setPanel(null); setCtx(false); } return; }
         if (dismissed.current === key) return;
         if (panelRef.current && !ctxRef.current) return; // um menu global aberto pelo jogador tem prioridade
         let next: PanelId; let focus = '';
-        if (z.k === 'field') next = { plant: 'field', i: -1 };
-        else if (z.k === 'region') { next = 'projects'; focus = `r:${z.id}`; }
+        if (z.k === 'field') next = { field: (z as { f: string }).f };
+        else if (z.k === 'obs') next = { obs: z.id! };
         else if (store.lvl(z.id!) >= 1) next = { b: z.id! };
         else { next = 'projects'; focus = `b:${z.id}`; }
         setCtx(true); setPanel(next);

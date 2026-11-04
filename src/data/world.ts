@@ -2,6 +2,7 @@
 // mesmos nós de recurso com os mesmos ids.
 import { BUILDINGS, REGIONS } from './buildings.ts';
 import { NODE_BY_ID } from './production.ts';
+import { FIELDS } from './fields.ts';
 
 export const TILE = 32;
 export const MAP_W = 64;
@@ -29,10 +30,6 @@ export const PATHS: [number, number][][] = [
   [[27, 40], [52, 40]],
 ];
 
-/** Canteiros do campo principal (2x2 tiles cada). */
-export const FIELD = { x: 24, y: 26, cols: 4, rows: 3, size: 2 };
-export const PLOT_COUNT = FIELD.cols * FIELD.rows;
-export const plotTile = (i: number) => ({ x: FIELD.x + (i % FIELD.cols) * FIELD.size, y: FIELD.y + Math.floor(i / FIELD.cols) * FIELD.size });
 
 export const SPAWN = { x: 31, y: 25 };
 
@@ -87,7 +84,7 @@ export const PATH_TILES = pathTiles();
 export function buildingTiles(): Map<string, string> {
   const m = new Map<string, string>();
   for (const b of BUILDINGS) for (let y = b.spot.y; y < b.spot.y + b.spot.h; y++) for (let x = b.spot.x; x < b.spot.x + b.spot.w; x++) m.set(`${x},${y}`, b.id);
-  for (let y = FIELD.y; y < FIELD.y + FIELD.rows * FIELD.size; y++) for (let x = FIELD.x; x < FIELD.x + FIELD.cols * FIELD.size; x++) m.set(`${x},${y}`, 'field');
+  for (const f of FIELDS) for (let y = f.y; y < f.y + f.rows * 2; y++) for (let x = f.x; x < f.x + f.cols * 2; x++) m.set(`${x},${y}`, `f:${f.id}`);
   return m;
 }
 
@@ -103,7 +100,7 @@ function buildWorld(): WorldNode[] {
     const d = doorTile(b.spot);
     block(d.x - 1, d.y, 3, 2, 0);
   }
-  block(FIELD.x, FIELD.y, FIELD.cols * FIELD.size, FIELD.rows * FIELD.size, 0);
+  for (const f of FIELDS) block(f.x - 1, f.y - 1, f.cols * 2 + 2, f.rows * 2 + 2, 0);
   block(SPAWN.x - 1, SPAWN.y - 1, 3, 3, 0);
   for (let y = RIVER.y0 - 1; y <= RIVER.y1 + 1; y++) for (let x = 0; x < MAP_W; x++) blocked.add(`${x},${y}`);
 
@@ -155,11 +152,13 @@ export function doorTile(s: { x: number; y: number; w: number; h: number }) { re
  * Grade de caminhabilidade (1 = livre). Regiões bloqueadas, água, prédios
  * construídos e nós sólidos bloqueiam.
  */
-export function buildWalkGrid(unlocked: Set<string>, built: Set<string>): Uint8Array<ArrayBuffer> {
+export function buildWalkGrid(unlocked: Set<string>, built: Set<string>, obs: Set<string> = new Set()): Uint8Array<ArrayBuffer> {
   const g = new Uint8Array(MAP_W * MAP_H);
+  const bridges = obs.has('pontes');
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
     const r = regionAt(x, y);
-    g[y * MAP_W + x] = r && unlocked.has(r) && !isWater(x, y) ? 1 : 0;
+    const river = y >= RIVER.y0 && y <= RIVER.y1;
+    g[y * MAP_W + x] = r && unlocked.has(r) && !isWater(x, y) && (!river || bridges) ? 1 : 0;
   }
   for (const b of BUILDINGS) {
     if (!built.has(b.id)) continue;

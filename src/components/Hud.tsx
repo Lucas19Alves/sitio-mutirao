@@ -1,52 +1,29 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
-import { QUESTS, MAX_LEVEL, ITEM_BY_ID, REGION_BY_ID, MAP_W, MAP_H, TILE, type QuestGoal } from '../data/catalog.ts';
+import { ITEM_BY_ID, REGION_BY_ID, MAP_W, MAP_H, TILE } from '../data/catalog.ts';
+import { mainsOpen, goalProgress, goalIcon } from '../game/missions.ts';
+import { store } from '../game/state/store.ts';
 import { useFarm, useTicker } from '../hooks/useStore.ts';
 import { bus, type PanelId } from '../game/bus.ts';
-import { capacity, xpNeed, unlocksAt } from '../game/rules.ts';
+import { xpNeed, unlocksAt } from '../game/rules.ts';
 import { Medal, Modal, useCountUp } from './ui.tsx';
 import { Portrait } from './FarmsScreen.tsx';
 import { normalizeLook } from '../game/art/characters.ts';
 import { iconUrl } from '../game/art/icons.ts';
 import { buildingPortrait, useThumbs } from '../game/art/portraits.ts';
-import { store } from '../game/state/store.ts';
-import { errorText } from '../utils/errors.ts';
 import { fmt } from '../utils/format.ts';
-import { play, sound } from '../game/audio.ts';
+import { sound } from '../game/audio.ts';
 import { gfx } from '../game/gfx.ts';
 import { shared } from '../game/shared.ts';
 import { WORLD_W, WORLD_H } from '../game/view.ts';
 import type { Me } from '../App.tsx';
 
-export function goalProgress(g: QuestGoal): [number, number] {
-  const f = store.farm!;
-  switch (g.k) {
-    case 'stat': return [Math.min(g.n, f.progression.stats[g.key] ?? 0), g.n];
-    case 'built': return [Math.min(g.lv, store.lvl(g.b)), g.lv];
-    case 'tool': return [Math.min(g.tier, store.tool(g.tool)), g.tier];
-    case 'region': return [store.hasRegion(g.r) ? 1 : 0, 1];
-    case 'level': return [Math.min(g.n, f.level), g.n];
-  }
-}
-
-/** Ícone que representa o objetivo da missão. */
-function goalIcon(g: QuestGoal): { icon?: string; src?: string } {
-  if (g.k === 'built') return { src: buildingPortrait(g.b, 96) };
-  if (g.k === 'tool') return { icon: 'ui_tools' };
-  if (g.k === 'region') return { icon: 'ui_map' };
-  if (g.k === 'level') return { icon: 'ui_progress' };
-  const [kind, item] = g.key.split(':');
-  if (item && ITEM_BY_ID[item]) return { icon: item };
-  return { icon: kind === 'plant' ? 'wheat' : kind === 'sold' ? 'ui_coins' : kind === 'orders' || kind === 'contracts' ? 'ui_scroll' : kind === 'cgive' ? 'ui_people' : 'star' };
-}
-
-/** Navegação: as quatro primeiras ficam sempre na barra; o resto entra em "Mais" no celular. */
-const NAV: { id: string; label: string; icon: string; cat: string }[] = [
-  { id: 'inventory', label: 'Estoque', icon: 'ui_bag', cat: 'leaf' },
-  { id: 'sell', label: 'Mercado', icon: 'ui_coins', cat: 'gold' },
-  { id: 'projects', label: 'Projetos', icon: 'ui_build', cat: 'wood' },
-  { id: 'orders', label: 'Pedidos', icon: 'ui_scroll', cat: 'sky' },
-  { id: 'tools', label: 'Ferramentas', icon: 'ui_tools', cat: 'steel' },
-  { id: 'progress', label: 'Progresso', icon: 'ui_progress', cat: 'grape' },
+/** Navegação inferior: cinco entradas; o resto da fazenda fica na central "Fazenda". */
+const NAV: { id: PanelId; label: string; icon: string; cat: string }[] = [
+  { id: 'missions', label: 'Missões', icon: 'ui_scroll', cat: 'sky' },
+  { id: 'farm', label: 'Fazenda', icon: 'ui_barn', cat: 'leaf' },
+  { id: 'shop', label: 'Loja', icon: 'ui_coins', cat: 'gold' },
+  { id: 'inventory', label: 'Mochila', icon: 'ui_bag', cat: 'wood' },
+  { id: 'me', label: 'Personagem', icon: 'ui_people', cat: 'grape' },
 ];
 
 function useSound() { return useSyncExternalStore(sound.subscribe, () => `${sound.musicOn}${sound.muted}`); }
@@ -150,7 +127,7 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const [more, setMore] = useState(false);
   const [talk, setTalk] = useState(false);
   const [mapOpen, setMapOpen] = useState(() => { try { return localStorage.getItem('sm-minimap') !== '0' && innerWidth > 760; } catch { return innerWidth > 760; } });
-  const [questOpen, setQuestOpen] = useState(() => innerWidth > 760);
+  const [questOpen, setQuestOpen] = useState(false);
   const [modal, setModal] = useState<{ kind: 'level'; lv: number } | { kind: 'region'; id: string } | null>(null);
   const [gain, setGain] = useState<{ n: number; k: number } | null>(null);
   useEffect(() => bus.on('bagfull', () => setBagAlert(Date.now())), []);
@@ -172,67 +149,67 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const coins = useCountUp(f.coins);
   const need = xpNeed(f.level);
   const pct = need ? f.xp / need : 1;
-  const qi = f.progression.quest;
-  const quest = QUESTS[qi];
-  const [qv, qn] = quest ? goalProgress(quest.goal) : [0, 1];
-  const done = quest && qv >= qn;
-  const used = s.invTotal(), cap = capacity();
-  const nextLv = Math.min(MAX_LEVEL, f.level + 1);
-  const nu = unlocksAt(nextLv);
-  const nextNames = [...nu.regions.map((r) => r.name), ...nu.buildings.map((b) => b.name), ...nu.crops.map((c) => ITEM_BY_ID[c.id].name), ...nu.recipes.map((r) => ITEM_BY_ID[r.id].name)].slice(0, 3);
-  const deliverable = Object.values(s.orders).filter((o) => o.slot < 99 && Object.entries(o.items).every(([k, q]) => s.qty(k) >= q)).length;
-  const projs = s.projects().length;
-  const gi = quest ? goalIcon(quest.goal) : { icon: 'star' };
+  const main = mainsOpen()[0];
+  const [qv, qn] = main ? goalProgress(main.goal) : [0, 1];
+  const done = !!main && qv >= qn;
+  const gi = main ? goalIcon(main.goal) : { icon: 'star' };
+  const deliverable = Object.values(s.orders).filter((o) => o.slot < 99 && Object.entries(o.items).every(([k, q]) => s.qty(k) + (s.bag()[k] ?? 0) >= q)).length;
+  const ms = f.progression.ms;
+  const claimable = [...(ms?.side ?? []), ...(ms?.daily?.l ?? []), ms?.coop ?? null].filter((m) => m && !m.done && (f.progression.stats[m.k] ?? 0) - m.base >= m.n).length + (done ? 1 : 0);
   const joy = gfx.joystick;
-  const nav = narrow ? NAV.slice(0, 4) : NAV;
   const open = (p: PanelId) => { setMore(false); onOpen(p); };
   const toggleMap = () => { const v = !mapOpen; setMapOpen(v); try { localStorage.setItem('sm-minimap', v ? '1' : '0'); } catch { /* */ } };
-
-  const claim = async () => {
-    const r = await store.act({ t: 'quest' });
-    if (r.ok) { play('coin'); bus.emit('cheer'); bus.emit('toast', { kind: 'ok', text: `Missão cumprida: ${quest.title}! +${quest.coins} moedas`, icon: 'ui_coins' }); }
-    else bus.emit('toast', { kind: 'warn', text: errorText(r.e) });
-  };
+  const myLook = normalizeLook(me.look);
+  void bagAlert; void ITEM_BY_ID;
 
   return (
     <>
-      {/* barra superior compacta: nível, moedas, celeiro | jogadores, mapa, ajustes */}
+      {/* barra superior: avatar com nível e XP, moedas, cristais | jogadores e menu */}
       <header className="topbar">
         <div className="tb-left">
-          <button className="lv-badge" onClick={() => open('progress')} aria-label={`Nível ${f.level}, ver progressão`} style={{ ['--p' as string]: `${pct * 360}deg` }} data-testid="hud-level">
-            <b>{f.level}</b>
+          <button className="hud-me" onClick={() => open('me')} aria-label={`Personagem, nível ${f.level}`} data-testid="hud-level" style={{ ['--p' as string]: `${pct * 360}deg` }}>
+            <Portrait look={myLook} scale={0.42} className="hud-face" />
+            <b className="hud-lv">{f.level}</b>
           </button>
           <div className="tb-res">
-            <span className="farm-title" title={f.name}>{f.name}</span>
             <div className="res-row">
               <span className="res res-coin" data-testid="hud-coins">
                 <img src={iconUrl('coin', 64)} alt="" /><b>{fmt(coins)}</b>
                 {gain && <em key={gain.k} className={gain.n > 0 ? 'gain up' : 'gain down'}>{gain.n > 0 ? '+' : ''}{fmt(gain.n)}</em>}
               </span>
-              <button className={`res res-btn${used >= cap ? ' full' : ''}`} onClick={() => open('inventory')} title="Ocupação do celeiro"><img src={iconUrl('ui_barn', 64)} alt="" /><b>{used}/{cap}</b></button>
+              <button className="res res-cr" onClick={() => open('shop')} data-testid="hud-crystals" title="Cristais"><i aria-hidden>💎</i><b>{fmt(f.crystals ?? 0)}</b></button>
               <button className={`res res-bag${s.bagUsed() >= s.bagCap() ? ' full' : ''}${Date.now() - bagAlert < 2500 ? ' alert' : ''}`} onClick={() => open('inventory')} title="Mochila (leve ao Celeiro para guardar)" data-testid="hud-bag">
                 <i className="bag-ico" aria-hidden>🎒</i><b>{s.bagUsed()}/{s.bagCap()}</b><span className="bag-fill" style={{ width: `${Math.min(100, (100 * s.bagUsed()) / s.bagCap())}%` }} />
               </button>
-              <span className="res res-rep" title="Reputação"><img src={iconUrl('star', 64)} alt="" /><b>{f.reputation}</b></span>
             </div>
             <div className="xpbar" title={need ? `${fmt(f.xp)} / ${fmt(need)} XP` : 'Nível máximo'}><span style={{ width: `${pct * 100}%` }} /></div>
           </div>
         </div>
         <div className="tb-right">
-          <div className="players" aria-label="Membros da fazenda">
-            {s.members.map((m) => (
-              <div key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}`} title={`${m.username}${s.online.has(m.user_id) ? ' (online)' : ' (offline)'}`}>
-                <Portrait look={normalizeLook(m.user_id === me.id ? me.look : m.look)} scale={0.36} className="pl-face" />
-              </div>
-            ))}
-            <span className={`net${s.connected ? ' ok' : ''}`} title={s.connected ? 'Conectado em tempo real' : 'Reconectando…'} data-testid="net-status">{s.connected ? 'online' : 'reconectando'}</span>
-          </div>
-          <button className={`ibtn${mapOpen ? ' on' : ''}`} onClick={toggleMap} aria-label={mapOpen ? 'Esconder mapa' : 'Mostrar mapa'} aria-pressed={mapOpen}><img src={iconUrl('ui_map', 64)} alt="" /></button>
-          {!narrow && <button className={`ibtn${sound.musicOn ? '' : ' off'}`} onClick={() => { sound.unlock(); sound.setMusicOn(!sound.musicOn); }} aria-label={sound.musicOn ? 'Desligar música' : 'Ligar música'} aria-pressed={sound.musicOn}><img src={iconUrl('ui_music', 64)} alt="" /></button>}
-          {!narrow && <button className="ibtn" onClick={() => setTalk(!talk)} aria-label="Falar com o grupo"><img src={iconUrl('ui_chat', 64)} alt="" /></button>}
-          <button className="ibtn" onClick={() => open('settings')} aria-label="Ajustes"><img src={iconUrl('ui_gear', 64)} alt="" /></button>
+          {!narrow && (
+            <div className="players" aria-label="Membros da fazenda">
+              {s.members.filter((m) => m.user_id !== me.id).map((m) => (
+                <div key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}`} title={`${m.username}${s.online.has(m.user_id) ? ' (online)' : ' (offline)'}`}>
+                  <Portrait look={normalizeLook(m.look)} scale={0.36} className="pl-face" />
+                </div>
+              ))}
+            </div>
+          )}
+          <span className={`net${s.connected ? ' ok' : ''}`} title={s.connected ? 'Conectado em tempo real' : 'Reconectando…'} data-testid="net-status">{s.connected ? 'online' : 'reconectando'}</span>
+          <button className={`ibtn${more ? ' on' : ''}`} onClick={() => setMore(!more)} aria-label="Mais opções" aria-expanded={more} data-testid="dock-more">
+            <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="5" cy="12" r="2.2" fill="currentColor" /><circle cx="12" cy="12" r="2.2" fill="currentColor" /><circle cx="19" cy="12" r="2.2" fill="currentColor" /></svg>
+          </button>
         </div>
       </header>
+      {more && (
+        <div className="more-sheet card-paper" role="menu">
+          <button className="more-item cat-sky" onClick={() => { setMore(false); toggleMap(); }}><img src={iconUrl('ui_map', 64)} alt="" />{mapOpen ? 'Esconder mapa' : 'Mostrar mapa'}</button>
+          <button className="more-item cat-sky" onClick={() => { setTalk(!talk); setMore(false); }}><img src={iconUrl('ui_chat', 64)} alt="" />Falar com o grupo</button>
+          <button className={`more-item cat-gold${sound.musicOn ? '' : ' off'}`} onClick={() => { sound.unlock(); sound.setMusicOn(!sound.musicOn); }}><img src={iconUrl('ui_music', 64)} alt="" />Música {sound.musicOn ? 'ligada' : 'desligada'}</button>
+          <button className="more-item" onClick={() => { setMore(false); bus.emit('recenter'); }}><img src={iconUrl('ui_map', 64)} alt="" />Centralizar</button>
+          <button className="more-item cat-steel" onClick={() => open('settings')}><img src={iconUrl('ui_gear', 64)} alt="" />Ajustes</button>
+        </div>
+      )}
 
       {!panelOpen && mapOpen && <div className="map-slot"><Minimap onClose={toggleMap} /></div>}
       {talk && (
@@ -243,39 +220,18 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
         </div>
       )}
 
-      {/* missão: cartão compacto (recolhível) */}
-      {!panelOpen && quest && (questOpen ? (
-        <div className={`quest card-paper${done ? ' quest-done' : ''}`} data-testid="quest-card">
-          <button className="quest-fold" onClick={() => setQuestOpen(false)} aria-label="Recolher missão">−</button>
-          <div className="quest-main">
-            <Medal {...gi} size={42} tone={done ? 'folha' : 'esm'} />
-            <div className="quest-text">
-              <span className="quest-n">Missão {qi + 1}/{QUESTS.length}</span>
-              <strong>{quest.title}</strong>
-              <p>{quest.desc}</p>
-            </div>
-          </div>
-          <div className="quest-foot">
-            <div className="bar bar-folha"><span style={{ width: `${(qv / qn) * 100}%` }} /></div>
-            <span className="quest-count">{qv}/{qn}</span>
-          </div>
-          <div className="quest-reward">
-            <span className="chip-r"><img src={iconUrl('coin', 64)} alt="" />{quest.coins}</span>
-            <span className="chip-r"><img src={iconUrl('ui_xp', 64)} alt="" />{quest.xp} XP</span>
-            {done && <button className="btn btn-primary btn-sm glow" onClick={claim} data-testid="quest-claim">Receber</button>}
-          </div>
-          {nextNames.length > 0 && <p className="next-unlock"><img src={iconUrl('ui_lock', 64)} alt="" />Nível {nextLv}: {nextNames.join(', ')}</p>}
-        </div>
-      ) : (
-        <div className={`quest-pill${done ? ' quest-done' : ''}`} data-testid="quest-card">
-          <button className="quest-pill-open" onClick={() => setQuestOpen(true)} aria-label="Abrir missão">
-            <Medal {...gi} size={28} tone={done ? 'folha' : 'esm'} />
-            <span>{done ? 'Missão cumprida!' : quest.title}</span>
+      {/* missão principal: pílula compacta no canto (o centro fica livre para o mundo) */}
+      {!panelOpen && main && (
+        <div className={`quest-pill${done ? ' quest-done' : ''}${questOpen ? ' wide' : ''}`} data-testid="quest-card">
+          <button className="quest-pill-open" onClick={() => open('missions')} aria-label="Abrir missões">
+            <Medal icon={gi.icon} src={gi.building ? buildingPortrait(gi.building, 96) : undefined} size={28} tone={done ? 'folha' : 'esm'} />
+            <span>{done ? 'Missão cumprida! Toque para receber' : main.title}</span>
             <i className="qp-n">{qv}/{qn}</i>
           </button>
-          {done && <button className="btn btn-primary btn-sm glow" onClick={claim} data-testid="quest-claim">Receber</button>}
+          <button className="quest-fold" onClick={() => setQuestOpen(!questOpen)} aria-label={questOpen ? 'Recolher' : 'Expandir'}>{questOpen ? '−' : '+'}</button>
+          {questOpen && <p className="qp-desc">{main.desc}</p>}
         </div>
-      ))}
+      )}
 
       {/* controles do mundo */}
       {!panelOpen && joy && <Joystick />}
@@ -293,41 +249,24 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
 
       {/* navegação inferior */}
       <nav className="nav" aria-label="Menus">
-        {nav.map(({ id, label, icon, cat }) => {
-          const badge = id === 'projects' ? projs : id === 'orders' ? deliverable : 0;
+        {NAV.map(({ id, label, icon, cat }) => {
+          const badge = id === 'missions' ? claimable : id === 'farm' ? deliverable : 0;
           return (
-            <button key={id} className={`nav-btn cat-${cat}${panel === id ? ' on' : ''}`} onClick={() => open(id as PanelId)} data-testid={`dock-${id}`}>
+            <button key={String(id)} className={`nav-btn cat-${cat}${panel === id ? ' on' : ''}`} onClick={() => open(id)} data-testid={`dock-${String(id)}`}>
               <span className="nav-ico"><img src={iconUrl(icon, 96)} alt="" /></span>
               <span className="nav-label">{label}</span>
               {badge > 0 && <em className="badge">{badge}</em>}
             </button>
           );
         })}
-        {narrow && (
-          <button className={`nav-btn cat-steel${more ? ' on' : ''}`} onClick={() => setMore(!more)} data-testid="dock-more" aria-expanded={more}>
-            <span className="nav-ico"><svg viewBox="0 0 24 24" width="24" height="24"><circle cx="5" cy="12" r="2.4" fill="currentColor" /><circle cx="12" cy="12" r="2.4" fill="currentColor" /><circle cx="19" cy="12" r="2.4" fill="currentColor" /></svg></span>
-            <span className="nav-label">Mais</span>
-          </button>
-        )}
       </nav>
-      {more && narrow && (
-        <div className="more-sheet card-paper" role="menu">
-          {NAV.slice(4).map(({ id, label, icon, cat }) => (
-            <button key={id} className={`more-item cat-${cat}`} onClick={() => open(id as PanelId)} data-testid={`dock-${id}`}><img src={iconUrl(icon, 64)} alt="" />{label}</button>
-          ))}
-          <button className="more-item cat-leaf" onClick={() => open('character')}><img src={iconUrl('ui_people', 64)} alt="" />Aparência</button>
-          <button className="more-item cat-sky" onClick={() => { setTalk(!talk); }}><img src={iconUrl('ui_chat', 64)} alt="" />Falar</button>
-          <button className={`more-item cat-gold${sound.musicOn ? '' : ' off'}`} onClick={() => { sound.unlock(); sound.setMusicOn(!sound.musicOn); }}><img src={iconUrl('ui_music', 64)} alt="" />Música {sound.musicOn ? 'ligada' : 'desligada'}</button>
-          <button className="more-item" onClick={() => { setMore(false); bus.emit('recenter'); }}><img src={iconUrl('ui_map', 64)} alt="" />Centralizar</button>
-        </div>
-      )}
 
       {modal?.kind === 'level' && (() => {
         const u = unlocksAt(modal.lv);
         const items = [...u.crops.map((c) => c.id), ...u.recipes.map((r) => r.id)];
         return (
           <Modal kicker="A fazenda cresceu" title={`Nível ${modal.lv}!`} onClose={() => setModal(null)}>
-            <p className="modal-sub">Recompensa: {25 * modal.lv} moedas para o caixa da fazenda.</p>
+            <p className="modal-sub">Recompensa: {25 * modal.lv} moedas e 💎 2 cristais para a fazenda.</p>
             {(u.buildings.length + u.regions.length + items.length + u.tools.length) > 0 && (
               <div className="unlocks">
                 {u.regions.map((r) => <div key={r.id} className="unlock"><Medal icon="ui_map" size={54} tone="folha" /><span>{r.name}</span></div>)}

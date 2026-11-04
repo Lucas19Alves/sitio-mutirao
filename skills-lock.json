@@ -55,6 +55,42 @@
       "skillPath": "skills/data-manager/SKILL.md",
       "computedHash": "d5e4ee7c0ed6cd24e7264bebcbcaf2b9032e5a3c42cc38c3a9fed6f81bda334b"
     },
+    "design-game-design-fundamentals": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/game-design-fundamentals/SKILL.md",
+      "computedHash": "98e2844537d5d94a22193d904c65a163e52c92a6826be836d2575fc2addded8e"
+    },
+    "design-game-economy-design": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/game-economy-design/SKILL.md",
+      "computedHash": "213a8db1ba869d34d71cdc5fdc1e09f1d479149f5dc9baef5da2ed9c339a1182"
+    },
+    "design-level-design": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/level-design/SKILL.md",
+      "computedHash": "a5ca17c3884a12f203ff230471bbbaec77d96008ecf8471e7b1d241a401d0947"
+    },
+    "design-quest-mission-design": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/quest-mission-design/SKILL.md",
+      "computedHash": "d45d9a2fb34b26c320720782d2ee48bb130de4c0e5b9afb7664db3dd33d080f8"
+    },
+    "design-skill-progression-trees": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-progression-trees/SKILL.md",
+      "computedHash": "e1e21bba91a23d679a1d085313c38167eca44dabedb238120f8cdc47f729dbca"
+    },
+    "design-ui-ux-game": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux-game/SKILL.md",
+      "computedHash": "b7c630ba3583bb366a20166ddf2b47ef9aa6bb6e22e6c14255cecc2aefedd105"
+    },
     "events-system": {
       "source": "phaserjs/phaser",
       "sourceType": "github",
@@ -144,6 +180,24 @@
       "sourceType": "github",
       "skillPath": "skills/loading-assets/SKILL.md",
       "computedHash": "ad170c148ff69639aa3307879f6c392ee55f45beadbae30f724f478abf98a951"
+    },
+    "narrative-character-design-narrative": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/character-design-narrative/SKILL.md",
+      "computedHash": "413ad780ea30d30a8c279f9a35ab9b869322788f5979003ab85f7cff964c6269"
+    },
+    "narrative-quest-narrative-coherence": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/quest-narrative-coherence/SKILL.md",
+      "computedHash": "a53ff476deebb9ae86dc9d9c3f996aef2e15db546521c0da148eb1099be40fb7"
+    },
+    "narrative-worldbuilding": {
+      "source": "fcsouza/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/worldbuilding/SKILL.md",
+      "computedHash": "f1462ed4098c046ac8302b4e2d89f32801b70a6a52bef42d3618b582ac9304aa"
     },
     "particles": {
       "source": "phaserjs/phaser",

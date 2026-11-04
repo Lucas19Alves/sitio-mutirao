@@ -2,7 +2,7 @@
 // água animada, pontes, cercas e decoração instanciada. 1 unidade = 1 tile (32 px lógicos).
 import * as THREE from 'three';
 import {
-  MAP_W, MAP_H, RIVER, BRIDGES, PATH_TILES, FIELD, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
+  MAP_W, MAP_H, RIVER, BRIDGES, PATH_TILES, FIELDS, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
 } from '../../data/catalog.ts';
 import { Kit, rng, tint } from './kit/geo.ts';
 import { matVC, labelTexture } from './kit/materials.ts';
@@ -14,7 +14,7 @@ const BIOME: Record<string, string> = {
   sitio: '#86bf5a', pomar: '#8fc462', bosque: '#679c4d', rio: '#92c667', colinas: '#a6ad68', vale: '#98cc70', planalto: '#b3a76e', border: '#5a8a48',
 };
 const PATH_C = new THREE.Color('#d9b98a').convertSRGBToLinear(), BANK_C = new THREE.Color('#c8b37a').convertSRGBToLinear();
-const FIELD_C = new THREE.Color('#8a6a3c').convertSRGBToLinear();
+const SOIL_C = FIELDS.map((f) => new THREE.Color(f.soil).convertSRGBToLinear());
 
 const hash = (x: number, y: number) => { const h = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return h - Math.floor(h); };
 function noise(x: number, y: number) {
@@ -67,8 +67,8 @@ function terrain(): THREE.Mesh {
     c.multiplyScalar(1 / 5);
     const n = noise(x * 0.9, z * 0.9) * 0.16 + noise(x * 3.1, z * 3.1) * 0.08 - 0.12;
     c.multiplyScalar(1 + n);
-    const inField = x > FIELD.x - 0.3 && x < FIELD.x + FIELD.cols * FIELD.size + 0.3 && z > FIELD.y - 0.3 && z < FIELD.y + FIELD.rows * FIELD.size + 0.3;
-    if (inField) c.lerp(FIELD_C, 0.55);
+    const fi = FIELDS.findIndex((f) => x > f.x - 0.3 && x < f.x + f.cols * 2 + 0.3 && z > f.y - 0.3 && z < f.y + f.rows * 2 + 0.3);
+    if (fi >= 0) c.lerp(SOIL_C[fi], 0.55);
     const p = pathFactor(x, z);
     if (p > 0) c.lerp(tmp.copy(PATH_C).multiplyScalar(0.96 + noise(x * 4, z * 4) * 0.08), p);
     const y = pos.getY(i);
@@ -118,15 +118,19 @@ function water(): THREE.Mesh {
   return m;
 }
 
-function bridges(): THREE.Mesh {
+function bridges(broken: boolean): THREE.Mesh {
   const k = new Kit();
+  const rr = rng(broken ? 5 : 3);
   for (const b of BRIDGES) {
     const x0 = b.x0, x1 = b.x1 + 1, z0 = RIVER.y0 - 0.4, z1 = RIVER.y1 + 1.4, cx = (x0 + x1) / 2;
-    for (let z = z0; z < z1; z += 0.26) k.box(x1 - x0 + 0.2, 0.08, 0.23, tint('#b9824e', (hash(z, x0) - 0.5) * 0.2), { p: [cx, 0.04, z + 0.12], jitter: 0.08 }, 0.02);
+    for (let z = z0; z < z1; z += 0.26) {
+      if (broken && (rr() < 0.55 || (z > z0 + 0.6 && z < z1 - 0.6 && rr() < 0.5))) continue;
+      k.box(x1 - x0 + 0.2, 0.08, 0.23, tint(broken ? '#8d6a48' : '#b9824e', (hash(z, x0) - 0.5) * 0.2), { p: [cx, 0.04 - (broken ? rr() * 0.12 : 0), z + 0.12], r: broken ? [rr() * 0.3 - 0.15, 0, rr() * 0.3 - 0.15] : undefined, jitter: 0.08 }, 0.02);
+    }
     for (const s of [x0 - 0.05, x1 + 0.05]) {
       k.box(0.16, 0.12, z1 - z0, '#7a4b2a', { p: [s, -0.02, (z0 + z1) / 2] }, 0.03);
       for (let z = z0; z <= z1 + 0.01; z += (z1 - z0) / 4) k.box(0.1, 0.55, 0.1, '#8d5a33', { p: [s, 0.27, z] }, 0.02);
-      k.box(0.09, 0.07, z1 - z0, '#a8713f', { p: [s, 0.5, (z0 + z1) / 2] }, 0.02);
+      if (!broken) k.box(0.09, 0.07, z1 - z0, '#a8713f', { p: [s, 0.5, (z0 + z1) / 2] }, 0.02);
       for (let z = z0 + 0.3; z < z1; z += (z1 - z0) / 4) k.cyl(0.08, 0.1, 0.9, '#6b4226', { p: [s, -0.45, z] }, 8);
     }
   }
@@ -135,16 +139,18 @@ function bridges(): THREE.Mesh {
   return m;
 }
 
-function fieldFence(): THREE.Mesh {
+function fieldFences(): THREE.Mesh {
   const k = new Kit();
-  const x0 = FIELD.x - 0.25, x1 = FIELD.x + FIELD.cols * FIELD.size + 0.25, z0 = FIELD.y - 0.25, z1 = FIELD.y + FIELD.rows * FIELD.size + 0.25;
-  const gap = (FIELD.x + FIELD.cols) ;
-  const post = (x: number, z: number) => k.box(0.1, 0.5, 0.1, '#c79359', { p: [x, 0.25, z] }, 0.02);
-  const rail = (ax: number, az: number, bx: number, bz: number) => { for (const y of [0.2, 0.38]) k.box(Math.max(0.04, Math.abs(bx - ax)), 0.05, Math.max(0.04, Math.abs(bz - az)), '#d3a265', { p: [(ax + bx) / 2, y, (az + bz) / 2] }, 0.01); };
-  for (let x = x0; x <= x1 + 0.01; x += 1) { if (Math.abs(x - gap) < 0.9) continue; post(x, z1); post(x, z0); }
-  for (let z = z0; z <= z1 + 0.01; z += 1) { post(x0, z); post(x1, z); }
-  rail(x0, z1, gap - 0.9, z1); rail(gap + 0.9, z1, x1, z1); rail(x0, z0, gap - 0.9, z0); rail(gap + 0.9, z0, x1, z0);
-  rail(x0, z0, x0, z1); rail(x1, z0, x1, z1);
+  for (const f of FIELDS) {
+    const x0 = f.x - 0.25, x1 = f.x + f.cols * 2 + 0.25, z0 = f.y - 0.25, z1 = f.y + f.rows * 2 + 0.25;
+    const gap = f.x + f.cols;
+    const post = (x: number, z: number) => k.box(0.1, 0.5, 0.1, '#c79359', { p: [x, 0.25, z] }, 0.02);
+    const rail = (ax: number, az: number, bx: number, bz: number) => { for (const y of [0.2, 0.38]) k.box(Math.max(0.04, Math.abs(bx - ax)), 0.05, Math.max(0.04, Math.abs(bz - az)), y > 0.3 ? f.color : '#d3a265', { p: [(ax + bx) / 2, y, (az + bz) / 2] }, 0.01); };
+    for (let x = x0; x <= x1 + 0.01; x += 1) { if (Math.abs(x - gap) < 0.9) continue; post(x, z1); post(x, z0); }
+    for (let z = z0; z <= z1 + 0.01; z += 1) { post(x0, z); post(x1, z); }
+    rail(x0, z1, gap - 0.9, z1); rail(gap + 0.9, z1, x1, z1); rail(x0, z0, gap - 0.9, z0); rail(gap + 0.9, z0, x1, z0);
+    rail(x0, z0, x0, z1); rail(x1, z0, x1, z1);
+  }
   const m = new THREE.Mesh(k.build(), matVC); m.castShadow = true; m.receiveShadow = true;
   return m;
 }
@@ -185,7 +191,7 @@ function decor(scene: THREE.Scene) {
   const mark = (x: number, y: number) => blocked.add(`${x},${y}`);
   for (const k of PATH_TILES) blocked.add(k);
   for (const b of BUILDINGS) for (let y = b.spot.y - 1; y <= b.spot.y + b.spot.h + 1; y++) for (let x = b.spot.x - 1; x <= b.spot.x + b.spot.w; x++) mark(x, y);
-  for (let y = FIELD.y - 1; y <= FIELD.y + FIELD.rows * FIELD.size; y++) for (let x = FIELD.x - 1; x <= FIELD.x + FIELD.cols * FIELD.size; x++) mark(x, y);
+  for (const f of FIELDS) for (let y = f.y - 2; y <= f.y + f.rows * 2 + 1; y++) for (let x = f.x - 1; x <= f.x + f.cols * 2; x++) mark(x, y);
   for (const n of WORLD_NODES) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) mark(n.x + dx, n.y + dy);
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) mark(SPAWN.x + dx, SPAWN.y + dy);
   const TABLE: Record<string, [string, number][]> = {
@@ -248,11 +254,17 @@ function decor(scene: THREE.Scene) {
 export class World {
   terrain: THREE.Mesh;
   water: THREE.Mesh;
+  private bridgeOk: THREE.Mesh;
+  private bridgeBroken: THREE.Mesh;
   constructor(scene: THREE.Scene) {
     this.terrain = terrain();
     this.water = water();
-    scene.add(this.terrain, this.water, bridges(), fieldFence());
+    this.bridgeOk = bridges(false); this.bridgeBroken = bridges(true);
+    this.bridgeOk.visible = false;
+    scene.add(this.terrain, this.water, this.bridgeOk, this.bridgeBroken, fieldFences());
     decor(scene);
   }
+  /** Pontes inteiras só depois da obra coletiva. */
+  setBridges(fixed: boolean) { this.bridgeOk.visible = fixed; this.bridgeBroken.visible = !fixed; }
   update(_dt: number, t: number) { ((this.water.material as THREE.ShaderMaterial).uniforms.uTime.value = t); }
 }
