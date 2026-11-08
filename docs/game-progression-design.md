@@ -225,3 +225,32 @@ Outras novidades de conteúdo:
   - sem microfone, o jogador entra só ouvindo.
 - **Notificações do sistema** (com o jogo em segundo plano): um colega chamou você ou conquistou algo.
 - **Limite conhecido:** só há servidores STUN, sem TURN. Em algumas redes muito fechadas (alguns 4G corporativos) a conexão de voz pode não fechar.
+
+## HUD (v1.4)
+
+A tela fica livre para o mundo. A HUD tem quatro zonas fixas e só mostra o que importa no momento.
+
+- **Esquerda em cima.**
+  - Um cartão com o avatar: o anel em volta é o XP e o selo mostra o nível.
+  - Ao lado: moedas, cristais e mochila. A mochila tem uma barrinha de ocupação.
+  - Logo abaixo, uma linha fina com a missão principal e o progresso. Quando a missão fica pronta, a linha fica verde.
+- **Direita em cima.**
+  - A equipe aparece só se houver colegas: rostos de quem está jogando, com destaque azul em quem está falando.
+  - O sino aparece só enquanto toca.
+  - A feira aparece só quando há prêmio para receber.
+  - "Reconectando" aparece só sem conexão.
+  - A engrenagem abre as configurações. Ela substitui o antigo menu de três pontinhos.
+- **Embaixo à direita.** 📣 para sinais rápidos. 🎙️ para o microfone, visível quando a voz está ligada.
+- **Navegação.** Missões, Fazenda, Loja, Mochila e Personagem. É mais baixa e discreta no celular, e uma pílula no desktop.
+
+O que saiu da tela:
+
+- a barra de XP separada (virou o anel do avatar);
+- a pílula "online" permanente;
+- o menu ⋯;
+- as falas prontas (os sinais cobrem o mesmo uso);
+- a descrição expansível da missão;
+- os botões de zoom e de centralizar (zoom pela roda do mouse ou pinça, e a câmera já segue o personagem);
+- o minimapa aberto por padrão. Ele agora se liga em Ajustes.
+
+No celular, com um menu aberto, a HUD sai de cena.

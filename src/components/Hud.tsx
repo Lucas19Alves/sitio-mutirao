@@ -137,10 +137,9 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   useGainFly();
   const narrow = useNarrow();
   const [bagAlert, setBagAlert] = useState(0);
-  const [more, setMore] = useState(false);
-  const [talk, setTalk] = useState(false);
-  const [mapOpen, setMapOpen] = useState(() => { try { return localStorage.getItem('sm-minimap') !== '0' && innerWidth > 760; } catch { return innerWidth > 760; } });
-  const [questOpen, setQuestOpen] = useState(false);
+  // minimapa: desligado por padrão; liga em Ajustes
+  const [mapOpen, setMapOpen] = useState(() => { try { return localStorage.getItem('sm-minimap') === '1'; } catch { return false; } });
+  useEffect(() => bus.on('minimap:set', (v: boolean) => setMapOpen(v)), []);
   const [modal, setModal] = useState<{ kind: 'level'; lv: number } | { kind: 'region'; id: string } | null>(null);
   const [gain, setGain] = useState<{ n: number; k: number } | null>(null);
   useEffect(() => bus.on('bagfull', () => setBagAlert(Date.now())), []);
@@ -181,120 +180,89 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const comboN = useCombo();
   useVoice();
   const talking = (voice.levels.get(me.id) ?? 0) > 0.06;
-  const open = (p: PanelId) => { setMore(false); onOpen(p); };
-  const toggleMap = () => { const v = !mapOpen; setMapOpen(v); try { localStorage.setItem('sm-minimap', v ? '1' : '0'); } catch { /* */ } };
+  const open = (p: PanelId) => { setPingOpen(false); onOpen(p); };
+  const closeMap = () => { setMapOpen(false); try { localStorage.setItem('sm-minimap', '0'); } catch { /* */ } };
   const myLook = normalizeLook(me.look);
   const fair = f.progression.fair;
   let fairNeed = 0, fairGot = 0;
   if (fair) for (const [k, q] of Object.entries(fair.goal)) { const p = ITEM_BY_ID[k]?.price ?? 1; fairNeed += q * p; fairGot += Math.min(q, fair.got[k] ?? 0) * p; }
   const fairPct = fairNeed ? Math.floor((100 * fairGot) / fairNeed) : 0;
   const fairReady = !!fair && COOP.fair.tiers.some((t, i) => fairPct >= t.pct * 100 && !fair.claimed.includes(String(i)));
-  void bagAlert; void ITEM_BY_ID;
+
+  const others = s.members.filter((m) => m.user_id !== me.id);
+  const onlineOthers = others.filter((m) => s.online.has(m.user_id));
+  const bellLeft = (f.progression.bell?.until ?? 0) - s.now();
+  const bagPct = Math.min(100, (100 * s.bagUsed()) / s.bagCap());
+  const hide = panelOpen && narrow; // no celular, um menu aberto ocupa a tela: a HUD sai do caminho
 
   return (
     <>
-      {/* barra superior: avatar com nível e XP, moedas, cristais | jogadores e menu */}
-      <header className="topbar">
-        <div className="tb-left">
-          <button className="hud-me" onClick={() => open('me')} aria-label={`Personagem, nível ${f.level}`} data-testid="hud-level" style={{ ['--p' as string]: `${pct * 360}deg` }}>
-            <Portrait look={myLook} scale={0.42} className="hud-face" />
-            <b className="hud-lv">{f.level}</b>
-          </button>
-          <div className="tb-res">
-            <div className="res-row">
-              <span className="res res-coin" data-testid="hud-coins">
-                <img src={iconUrl('coin', 64)} alt="" /><b>{fmt(coins)}</b>
-                {gain && <em key={gain.k} className={gain.n > 0 ? 'gain up' : 'gain down'}>{gain.n > 0 ? '+' : ''}{fmt(gain.n)}</em>}
-              </span>
-              <button className="res res-cr" onClick={() => open('shop')} data-testid="hud-crystals" title="Cristais"><i aria-hidden>💎</i><b>{fmt(f.crystals ?? 0)}</b></button>
-              <button className={`res res-bag${s.bagUsed() >= s.bagCap() ? ' full' : ''}${Date.now() - bagAlert < 2500 ? ' alert' : ''}`} onClick={() => open('inventory')} title="Mochila (leve ao Celeiro para guardar)" data-testid="hud-bag">
-                <i className="bag-ico" aria-hidden>🎒</i><b>{s.bagUsed()}/{s.bagCap()}</b><span className="bag-fill" style={{ width: `${Math.min(100, (100 * s.bagUsed()) / s.bagCap())}%` }} />
-              </button>
-            </div>
-            <div className="xpbar" title={need ? `${fmt(f.xp)} / ${fmt(need)} XP` : 'Nível máximo'}><span style={{ width: `${pct * 100}%` }} /></div>
+      {/* esquerda em cima: perfil (anel de XP + nível), moedas, cristais, mochila e, logo abaixo, a missão */}
+      {!hide && (
+        <div className="hud-tl">
+          <div className="hud-card" data-testid="hud-card">
+            <button className="hud-me" onClick={() => open('me')} aria-label={`Personagem, nível ${f.level}`} data-testid="hud-level" title={need ? `Nível ${f.level} · ${fmt(f.xp)}/${fmt(need)} XP` : 'Nível máximo'} style={{ ['--p' as string]: `${pct * 360}deg` }}>
+              <Portrait look={myLook} className="hud-face" />
+              <b className="hud-lv">{f.level}</b>
+            </button>
+            <span className="hud-res" data-testid="hud-coins" title="Moedas da fazenda">
+              <img src={iconUrl('coin', 64)} alt="" /><b>{fmt(coins)}</b>
+              {gain && <em key={gain.k} className={gain.n > 0 ? 'gain up' : 'gain down'}>{gain.n > 0 ? '+' : ''}{fmt(gain.n)}</em>}
+            </span>
+            <button className="hud-res cr" onClick={() => open('shop')} data-testid="hud-crystals" title="Cristais (loja)"><i aria-hidden>💎</i><b>{fmt(f.crystals ?? 0)}</b></button>
+            <button className={`hud-res bag${s.bagUsed() >= s.bagCap() ? ' full' : ''}${Date.now() - bagAlert < 2500 ? ' alert' : ''}`} onClick={() => open('inventory')} title="Mochila: leve ao Celeiro para guardar" data-testid="hud-bag" style={{ ['--f' as string]: `${bagPct}%` }}>
+              <i aria-hidden>🎒</i><b>{s.bagUsed()}<small>/{s.bagCap()}</small></b>
+            </button>
           </div>
-        </div>
-        <div className="tb-right">
-          <button className="team-stack" onClick={() => open('team')} aria-label="Equipe" data-testid="hud-team">
-            {s.members.filter((m) => m.user_id !== me.id).slice(0, narrow ? 2 : 3).map((m) => (
-              <span key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}`} title={`${m.username}${s.online.has(m.user_id) ? ' (jogando)' : ''}`}>
-                <Portrait look={normalizeLook(m.look)} className="pl-face" />
-              </span>
-            ))}
-            <b>👥{s.members.length > 1 ? ` ${[...s.online].filter((u) => u !== me.id).length}/${s.members.length - 1}` : ''}</b>
-          </button>
-          <span className={`net${s.connected ? ' ok' : ''}`} title={s.connected ? 'Conectado em tempo real' : 'Reconectando…'} data-testid="net-status">{s.connected ? 'online' : 'reconectando'}</span>
-          <button className={`ibtn${more ? ' on' : ''}`} onClick={() => setMore(!more)} aria-label="Mais opções" aria-expanded={more} data-testid="dock-more">
-            <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="5" cy="12" r="2.2" fill="currentColor" /><circle cx="12" cy="12" r="2.2" fill="currentColor" /><circle cx="19" cy="12" r="2.2" fill="currentColor" /></svg>
-          </button>
-        </div>
-      </header>
-      {more && (
-        <div className="more-sheet card-paper" role="menu">
-          <button className="more-item cat-sky" onClick={() => { setMore(false); toggleMap(); }}><img src={iconUrl('ui_map', 64)} alt="" />{mapOpen ? 'Esconder mapa' : 'Mostrar mapa'}</button>
-          <button className="more-item cat-sky" onClick={() => { setTalk(!talk); setMore(false); }}><img src={iconUrl('ui_chat', 64)} alt="" />Falar com o grupo</button>
-          <button className={`more-item cat-gold${sound.musicOn ? '' : ' off'}`} onClick={() => { sound.unlock(); sound.setMusicOn(!sound.musicOn); }}><img src={iconUrl('ui_music', 64)} alt="" />Música {sound.musicOn ? 'ligada' : 'desligada'}</button>
-          <button className="more-item" onClick={() => { setMore(false); bus.emit('recenter'); }}><img src={iconUrl('ui_map', 64)} alt="" />Centralizar</button>
-          <button className="more-item cat-steel" onClick={() => open('settings')}><img src={iconUrl('ui_gear', 64)} alt="" />Ajustes</button>
+          {main && !panelOpen && (
+            <button className={`hud-quest${done ? ' done' : ''}`} onClick={() => open('missions')} data-testid="quest-card" style={{ ['--q' as string]: `${Math.min(100, (100 * qv) / Math.max(1, qn))}%` }}>
+              <Medal icon={gi.icon} src={gi.building ? buildingPortrait(gi.building, 96) : undefined} size={22} tone={done ? 'folha' : 'esm'} />
+              <span>{done ? 'Pronta! Toque para receber' : main.title}</span>
+              <i>{done ? '✨' : `${qv}/${qn}`}</i>
+            </button>
+          )}
         </div>
       )}
 
-      {!panelOpen && mapOpen && <div className="map-slot"><Minimap onClose={toggleMap} /></div>}
-      {talk && (
-        <div className="talk card-paper">
-          {['Olá!', 'Me ajuda aqui!', 'Vou colher', 'Vou produzir', 'Valeu!'].map((t) => (
-            <button key={t} className="chip" onClick={() => { bus.emit('emote', t); setTalk(false); setMore(false); }}>{t}</button>
-          ))}
+      {/* direita em cima: o que está acontecendo (só quando importa), equipe e a engrenagem */}
+      {!hide && (
+        <div className="hud-tr">
+          {bellLeft > 0 && <button className="hud-pip bell" onClick={() => open('team')} data-testid="chip-bell" title="Sino do Mutirão tocando">🔔<small>{fmtTime(bellLeft)}</small></button>}
+          {fairReady && <button className="hud-pip fair" onClick={() => open('fair')} data-testid="chip-fair" title={`Feira da Vila: ${fairPct}%`}>🎪<small>prêmio!</small></button>}
+          {!s.connected && <span className="hud-pip warn" title="Sem conexão: tentando de novo" data-testid="net-status">⚠️<small>reconectando</small></span>}
+          {others.length > 0 && (
+            <button className="hud-team" onClick={() => open('team')} aria-label={`Equipe: ${onlineOthers.length} jogando agora`} data-testid="hud-team">
+              {(onlineOthers.length ? onlineOthers : others).slice(0, narrow ? 2 : 3).map((m) => (
+                <span key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}${(voice.levels.get(m.user_id) ?? 0) > 0.06 ? ' talking' : ''}`} title={m.username}><Portrait look={normalizeLook(m.look)} className="pl-face" /></span>
+              ))}
+              {onlineOthers.length > 0 && <b>{onlineOthers.length}</b>}
+            </button>
+          )}
+          <button className="hud-gear" onClick={() => open('settings')} aria-label="Configurações" data-testid="hud-settings">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.7 7.7 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.7 7.7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 1.7-1l2.5 1 2-3.5ZM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)" /></svg>
+          </button>
         </div>
       )}
 
-      {!panelOpen && (
-        <div className="status-chips">
-          {(f.progression.bell?.until ?? 0) > s.now() && <button className="schip bell" onClick={() => open('team')} data-testid="chip-bell">🔔 Mutirão {fmtTime((f.progression.bell?.until ?? 0) - s.now())}</button>}
-          {f.progression.fair && <button className="schip fair" onClick={() => open('fair')} data-testid="chip-fair">🎪 Feira {fairPct}%{fairReady ? ' · prêmio!' : ''}</button>}
-        </div>
-      )}
+      {!panelOpen && mapOpen && <div className="map-slot"><Minimap onClose={closeMap} /></div>}
 
       {comboN > 0 && <div className="combo-badge" key={comboN}>Combo <b>x{comboN}</b></div>}
 
-      {/* missão principal: pílula compacta no canto (o centro fica livre para o mundo) */}
-      {!panelOpen && main && (
-        <div className={`quest-pill${done ? ' quest-done' : ''}${questOpen ? ' wide' : ''}`} data-testid="quest-card">
-          <button className="quest-pill-open" onClick={() => open('missions')} aria-label="Abrir missões">
-            <Medal icon={gi.icon} src={gi.building ? buildingPortrait(gi.building, 96) : undefined} size={28} tone={done ? 'folha' : 'esm'} />
-            <span>{done ? 'Missão cumprida! Toque para receber' : main.title}</span>
-            <i className="qp-n">{qv}/{qn}</i>
-          </button>
-          <button className="quest-fold" onClick={() => setQuestOpen(!questOpen)} aria-label={questOpen ? 'Recolher' : 'Expandir'}>{questOpen ? '−' : '+'}</button>
-          <span className="qp-bar"><i style={{ width: `${Math.min(100, (100 * qv) / Math.max(1, qn))}%` }} /></span>
-          {questOpen && <p className="qp-desc">{main.desc}</p>}
-        </div>
-      )}
-
-      {/* controles do mundo */}
+      {/* embaixo: joystick (celular) e, à direita, voz e sinal rápido */}
       {!panelOpen && joy && <Joystick />}
       {!panelOpen && (
-        <div className="ping-fab">
-          {pingOpen && <div className="ping-menu card-paper">{PINGS.map((p) => <button key={p.k} className="chip" onClick={() => { bus.emit('ping', p.k); setPingOpen(false); }}>{p.icon} {p.text}</button>)}</div>}
-          <button className={`ibtn mic-btn${voice.on && voice.micOn && !voice.micDenied ? ' live' : ''}${talking ? ' talking' : ''}`} data-testid="mic-btn"
-            onClick={() => { if (!voice.on) void voice.join(me.id); else if (voice.micDenied) toast('Microfone bloqueado. Libere no cadeado da barra de endereço.', 'warn'); else { voice.setMic(!voice.micOn); toast(voice.micOn ? '🎙️ Microfone ligado' : '🔇 Microfone desligado', 'info'); } }}
-            aria-label={voice.micOn ? 'Silenciar microfone' : 'Ligar microfone'} aria-pressed={voice.micOn}>{!voice.on ? '🎧' : voice.micDenied || !voice.micOn ? '🔇' : '🎙️'}</button>
-          <button className={`ibtn ping-btn${pingOpen ? ' on' : ''}`} onClick={() => setPingOpen(!pingOpen)} aria-label="Avisar o grupo" aria-expanded={pingOpen} data-testid="ping-btn">📣</button>
+        <div className="hud-br">
+          {pingOpen && <div className="ping-menu card-paper" role="menu">{PINGS.map((p) => <button key={p.k} className="chip" onClick={() => { bus.emit('ping', p.k); setPingOpen(false); }}>{p.icon} {p.text}</button>)}</div>}
+          <button className={`hud-round ping${pingOpen ? ' on' : ''}`} onClick={() => setPingOpen(!pingOpen)} aria-label="Avisar o grupo" aria-expanded={pingOpen} data-testid="ping-btn">📣</button>
+          {voice.on && (
+            <button className={`hud-round mic${voice.micOn && !voice.micDenied ? ' live' : ' off'}${talking ? ' talking' : ''}`} data-testid="mic-btn"
+              onClick={() => { if (voice.micDenied) toast('Microfone bloqueado. Libere no cadeado da barra de endereço.', 'warn'); else { voice.setMic(!voice.micOn); toast(voice.micOn ? '🎙️ Microfone ligado' : '🔇 Microfone desligado', 'info'); } }}
+              aria-label={voice.micOn ? 'Silenciar microfone' : 'Ligar microfone'} aria-pressed={voice.micOn}>{voice.micDenied || !voice.micOn ? '🔇' : '🎙️'}</button>
+          )}
         </div>
       )}
-      <div className="hud-actions">
-        {!narrow && (
-          <div className="zoom">
-            <button className="ibtn" onClick={() => bus.emit('zoom', 1.15)} aria-label="Aproximar">+</button>
-            <button className="ibtn" onClick={() => bus.emit('zoom', 0.87)} aria-label="Afastar">−</button>
-            <button className="ibtn" onClick={() => bus.emit('recenter')} aria-label="Centralizar no personagem">
-              <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="4" fill="currentColor" /><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
-            </button>
-          </div>
-        )}
-      </div>
 
-      {/* navegação inferior */}
+      {/* navegação */}
       <nav className="nav" aria-label="Menus">
         {NAV.map(({ id, label, icon, cat }) => {
           const badge = id === 'missions' ? claimable : id === 'farm' ? deliverable : 0;

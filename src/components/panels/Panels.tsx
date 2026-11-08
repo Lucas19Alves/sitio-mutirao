@@ -344,6 +344,7 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
   const [pw, setPw] = useState({ cur: '', next: '' });
   const [pwMsg, setPwMsg] = useState('');
   const [editing, setEditing] = useState(false);
+  const [mini, setMini] = useState(() => { try { return localStorage.getItem('sm-minimap') === '1'; } catch { return false; } });
   useSyncExternalStore(gfx.subscribe, () => `${gfx.quality}${gfx.effects}${gfx.reduceMotion}${gfx.joystick}`);
   const f = s.farm!;
   const copy = async () => { try { await navigator.clipboard.writeText(f.invite_code); toast('Código copiado.', 'ok'); } catch { toast(`Código: ${f.invite_code}`); } };
@@ -387,6 +388,7 @@ function SettingsPanel({ onClose, me, onExit, onLookChange }: { onClose: () => v
         <label className="row"><input type="checkbox" checked={gfx.effects} onChange={(e) => gfx.setEffects(e.target.checked)} /> Partículas e confete</label>
         <label className="row"><input type="checkbox" checked={gfx.reduceMotion} onChange={(e) => gfx.setReduceMotion(e.target.checked)} /> Reduzir movimento</label>
         <label className="row"><input type="checkbox" checked={gfx.joystick} onChange={(e) => gfx.setJoystick(e.target.checked)} /> Joystick na tela</label>
+        <label className="row"><input type="checkbox" checked={mini} onChange={(e) => { setMini(e.target.checked); try { localStorage.setItem('sm-minimap', e.target.checked ? '1' : '0'); } catch { /* */ } bus.emit('minimap:set', e.target.checked); }} data-testid="opt-minimap" /> Minimapa no canto da tela</label>
       </section>
       <section className="panel inset">
         <h3 className="sub">Conta</h3>
