@@ -244,6 +244,35 @@ export function fishSpot(deep: boolean, full: boolean): THREE.BufferGeometry {
   return k.build();
 }
 
+/** Araucária: tronco alto e reto, galhos em "taça" no topo, pinhas. */
+export function araucaria(full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  k.cyl(0.11, 0.16, 2.6, '#6b4a33', { p: [0, 1.3, 0], jitter: 0.08 }, 8);
+  for (let tier = 0; tier < 3; tier++) for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + tier * 0.4, y = 2.15 + tier * 0.28, l = 0.95 - tier * 0.22;
+    k.box(0.16, 0.08, l, tier === 2 ? '#2f6b3a' : '#2b5e36', { p: [Math.sin(a) * l * 0.5, y + 0.1, Math.cos(a) * l * 0.5], r: [-0.35, a, 0], wind: 0.6 }, 0.03);
+  }
+  if (full) for (let i = 0; i < 4; i++) { const a = i * 1.6; k.sphere(0.1, '#8d4f2b', { p: [Math.sin(a) * 0.45, 2.05, Math.cos(a) * 0.45] }, 7, 5); }
+  return k.build();
+}
+/** Ipê florido: copa redonda coberta de flores (amarelo ou rosa). */
+export function ipe(color: string, full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  trunk(k, 1.1, 0.16, '#7b4a2b');
+  if (full) canopy(k, color === '#e6b23a' ? 41 : 43, 0, 1.55, 0.7, color, 7, false);
+  else for (let i = 0; i < 4; i++) k.cyl(0.04, 0.06, 0.6, '#7b4a2b', { p: [Math.sin(i * 1.6) * 0.25, 1.35, Math.cos(i * 1.6) * 0.25], r: [Math.cos(i * 1.6) * 0.6, 0, -Math.sin(i * 1.6) * 0.6] }, 5);
+  return k.build();
+}
+/** Montanha baixa (horizonte), facetada. */
+export function mountain(seed: number, h: number, col: string, snow = false): THREE.BufferGeometry {
+  const k = new Kit();
+  const r = rng(seed);
+  k.cone(h * 0.9, h, col, { p: [0, h / 2, 0], flat: true, jitter: 0.12 }, 7);
+  for (let i = 0; i < 2; i++) k.cone(h * (0.5 + r() * 0.2), h * (0.55 + r() * 0.2), tint(col, -0.08), { p: [(r() - 0.5) * h, h * 0.3, (r() - 0.5) * h * 0.6], flat: true }, 6);
+  if (snow) k.cone(h * 0.26, h * 0.3, '#f4f7fb', { p: [0, h * 0.86, 0], flat: true }, 7);
+  return k.build();
+}
+
 export function nodeGeometries(): Record<string, [THREE.BufferGeometry, THREE.BufferGeometry]> {
   return {
     tree_oak: [oak(3), stump()],
@@ -271,6 +300,8 @@ export function nodeGeometries(): Record<string, [THREE.BufferGeometry, THREE.Bu
     bamboo: [bambooClump(true), bambooClump(false)],
     fish_spot: [fishSpot(false, true), fishSpot(false, false)],
     deep_spot: [fishSpot(true, true), fishSpot(true, false)],
+    araucaria: [araucaria(true), araucaria(false)],
+    ipe_tree: [ipe('#e6b23a', true), ipe('#e6b23a', false)],
   };
 }
 
@@ -282,5 +313,6 @@ export function decorGeometries(): Record<string, THREE.BufferGeometry> {
     log: logPile(), mush: mushrooms(), stone: rock(0.22, '#adb2b7', 21), lily: lily(),
     tuft: tuft('#86c457', 0.3, 7, 11), tuft2: tuft('#9ad15f', 0.24, 6, 12),
     palm: acaiPalm(false), banana: bananaTree(false), bamboo_d: bambooClump(true), cattail: tuft('#7d9a3a', 0.8, 10, 31, '#6d4c41'),
+    arauc: araucaria(false), ipe_pink: ipe('#e57fa8', true), ipe_purple: ipe('#9c6ad0', true),
   };
 }

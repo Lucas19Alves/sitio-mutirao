@@ -87,6 +87,14 @@ export const MAIN: MainMission[] = [
   m('m60', ['m59', 'm38'], 'Rumo à cachoeira', 'Abra a trilha da Mata da Cachoeira.', { k: 'region', r: 'mata' }, 1600, 380, 6, 'Bambu e açaí'),
   m('m61', ['m60'], 'Ateliê de Bambu', 'Construa o Ateliê de Bambu.', { k: 'built', b: 'bamboo_shop', lv: 1 }, 1500, 350, 4, 'Flautas e luminárias'),
   m('m62', ['m61'], 'Açaí na tigela', 'Construa o Quiosque de Açaí.', { k: 'built', b: 'acai_bar', lv: 1 }, 1700, 380, 5, 'Tigelas de açaí'),
+  // v1.5 — Serra da Neblina e Várzea dos Ipês
+  m('m64', ['m55', 'm38'], 'A subida da serra', 'Abra uma passagem no muro de pedra da Serra da Neblina.', { k: 'region', r: 'serra' }, 2000, 450, 6, 'Araucárias e pinhão'),
+  m('m65', ['m64'], 'Colheita de pinhão', 'Junte 30 pinhões das araucárias.', { k: 'stat', key: 'h:pinhao', n: 30 }, 1500, 360, 3, 'Casa do Pinhão'),
+  m('m66', ['m65'], 'Casa do Pinhão', 'Construa a Casa do Pinhão.', { k: 'built', b: 'casa_pinhao', lv: 1 }, 2500, 520, 5, 'Pinhão cozido e paçoca'),
+  m('m67', ['m66'], 'Ervatal', 'Abra o Ervatal e prepare 8 chimarrões.', { k: 'stat', key: 'c:chimarrao', n: 8 }, 2600, 540, 5, 'Várzea dos Ipês'),
+  m('m68', ['m67', 'm62'], 'O ipê tombado', 'Corte o ipê caído e abra a Várzea dos Ipês.', { k: 'region', r: 'varzea' }, 3500, 700, 8, 'Ipês e a lagoa'),
+  m('m69', ['m68'], 'Luthieria', 'Construa a Luthieria na várzea.', { k: 'built', b: 'luthier', lv: 1 }, 3800, 760, 6, 'Violas e rabecas'),
+  m('m70', ['m69'], 'Moda de viola', 'Faça 5 violas caipiras.', { k: 'stat', key: 'c:viola', n: 5 }, 4500, 900, 10, 'Festa no terreiro'),
   m('m63', ['m62', 'm40'], 'Lenda do Mutirão', 'Leve a fazenda ao nível 40.', { k: 'level', n: 40 }, 5000, 0, 20, 'Título de Lenda do Mutirão'),
 ];
 

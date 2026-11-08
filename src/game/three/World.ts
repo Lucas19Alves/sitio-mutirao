@@ -2,16 +2,16 @@
 // água animada, pontes, cercas e decoração instanciada. 1 unidade = 1 tile (32 px lógicos).
 import * as THREE from 'three';
 import {
-  MAP_W, MAP_H, RIVER, BRIDGES, LAKE, PATH_TILES, FIELDS, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
+  MAP_W, MAP_H, RIVER, BRIDGES, LAKE, PONDS, WATERFALL, PATH_TILES, FIELDS, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
 } from '../../data/catalog.ts';
 import { Kit, rng, tint } from './kit/geo.ts';
 import { matVC, labelTexture } from './kit/materials.ts';
-import { decorGeometries } from './kit/nature.ts';
+import { decorGeometries, mountain } from './kit/nature.ts';
 import { gfx } from '../gfx.ts';
 
 export const MARGIN = 18;
 const BIOME: Record<string, string> = {
-  sitio: '#86bf5a', pomar: '#8fc462', bosque: '#679c4d', rio: '#92c667', colinas: '#a6ad68', vale: '#98cc70', planalto: '#b3a76e', pasto: '#9fd06a', lago: '#94c973', cafezal: '#86b257', mata: '#5f9a48', border: '#5a8a48',
+  sitio: '#86bf5a', pomar: '#8fc462', bosque: '#679c4d', rio: '#92c667', colinas: '#a6ad68', vale: '#98cc70', planalto: '#b3a76e', pasto: '#9fd06a', lago: '#94c973', cafezal: '#86b257', mata: '#5f9a48', serra: '#88a86a', varzea: '#a6d47a', border: '#5a8a48',
 };
 const PATH_C = new THREE.Color('#d9b98a').convertSRGBToLinear(), BANK_C = new THREE.Color('#c8b37a').convertSRGBToLinear();
 const SOIL_C = FIELDS.map((f) => new THREE.Color(f.soil).convertSRGBToLinear());
@@ -26,8 +26,9 @@ function noise(x: number, y: number) {
 
 /** Altura do terreno em (x, z) em tiles; usada também para pousar objetos. */
 export function heightAt(x: number, z: number): number {
-  const ld = Math.hypot((x - LAKE.cx) / LAKE.rx, (z - LAKE.cy) / LAKE.ry);
-  if (ld < 1.12) return -Math.min(0.6, (1.12 - ld) * 1.9);
+  for (const p of PONDS) { const ld = Math.hypot((x - p.cx) / p.rx, (z - p.cy) / p.ry); if (ld < 1.12) return -Math.min(0.6, (1.12 - ld) * 1.9); }
+  // penhasco atrás da cachoeira
+  { const dx = (x - WATERFALL.x) / 3.4, dz = (z - (WATERFALL.z - 1.6)) / 1.6; const d = dx * dx + dz * dz; if (d < 1) return (1 - d) * 3.2; }
   const inRiver = z > RIVER.y0 - 0.2 && z < RIVER.y1 + 1.2;
   if (inRiver) {
     const onBridge = BRIDGES.some((b) => x > b.x0 - 0.2 && x < b.x1 + 1.2);
@@ -189,7 +190,7 @@ export function regionLock(id: string): THREE.Group {
 
 /** Decoração instanciada e determinística (mesma para todos os jogadores). */
 /** Raio de colisão de cada decoração alta (o resto é atravessável: grama, flores, samambaia). */
-const SOLID_R: Record<string, number> = { pine: 0.3, pine2: 0.3, oak_d: 0.34, oak_d2: 0.34, bush: 0.26, berrybush: 0.26, log: 0.32, stone: 0.2, palm: 0.14, banana: 0.18, bamboo_d: 0.3 };
+const SOLID_R: Record<string, number> = { arauc: 0.2, ipe_pink: 0.3, ipe_purple: 0.3, pine: 0.3, pine2: 0.3, oak_d: 0.34, oak_d2: 0.34, bush: 0.26, berrybush: 0.26, log: 0.32, stone: 0.2, palm: 0.14, banana: 0.18, bamboo_d: 0.3 };
 
 function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][]>) {
   const blocked = new Set<string>();
@@ -212,6 +213,8 @@ function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][
     lago: [['cattail', 0.05], ['flowers', 0.03], ['tuft2', 0.05], ['stone', 0.015], ['oak_d2', 0.01]],
     cafezal: [['banana', 0.025], ['palm', 0.01], ['fern', 0.05], ['tuft', 0.05], ['bush', 0.02]],
     mata: [['bamboo_d', 0.02], ['palm', 0.025], ['fern', 0.09], ['pine', 0.02], ['mush', 0.03], ['bush', 0.03], ['log', 0.008]],
+    serra: [['arauc', 0.03], ['pine', 0.03], ['stone', 0.05], ['pebbles', 0.04], ['fern', 0.03], ['tuft2', 0.04]],
+    varzea: [['ipe_pink', 0.012], ['ipe_purple', 0.01], ['flowers', 0.12], ['tuft', 0.05], ['cattail', 0.015]],
   };
   const geos = decorGeometries();
   const lists: Record<string, THREE.Matrix4[]> = {};
@@ -224,7 +227,7 @@ function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][
   for (let ty = -MARGIN + 2; ty < MAP_H + MARGIN - 2; ty++) for (let tx = -MARGIN + 2; tx < MAP_W + MARGIN - 2; tx++) {
     const roll = r(), jx = r(), jy = r(), sc = r();
     if (blocked.has(`${tx},${ty}`)) continue;
-    if (Math.hypot((tx + 0.5 - LAKE.cx) / LAKE.rx, (ty + 0.5 - LAKE.cy) / LAKE.ry) < 1.15) { if (roll < 0.06 * dens) put('lily', tx + jx, ty + jy, 0.8 + sc * 0.5, jx * 6); continue; }
+    if (PONDS.some((p) => Math.hypot((tx + 0.5 - p.cx) / p.rx, (ty + 0.5 - p.cy) / p.ry) < 1.15)) { if (roll < 0.06 * dens) put('lily', tx + jx, ty + jy, 0.8 + sc * 0.5, jx * 6); continue; }
     if (ty >= RIVER.y0 - 1 && ty <= RIVER.y1 + 1) {
       if (isWater(tx, ty) && roll < 0.05 * dens) put('lily', tx + jx, ty + 0.3 + jy * 0.5, 0.8 + sc * 0.4, jx * 6);
       continue;
@@ -234,7 +237,7 @@ function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][
     if (big && (tx < -6 || ty < -6 || tx > MAP_W + 5 || ty > MAP_H + 5) && roll > 0.55) continue;
     let acc = 0;
     for (const [k, p] of TABLE[reg] ?? []) {
-      const tree = /pine|oak/.test(k);
+      const tree = /pine|oak|arauc|ipe/.test(k);
       acc += big || tree ? p : p * dens;
       if (roll >= acc) continue;
       const px = tx + 0.2 + jx * 0.6, pz = ty + 0.2 + jy * 0.6, psc = tree ? 0.85 + sc * 0.45 : 0.8 + sc * 0.5;
@@ -253,7 +256,7 @@ function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][
     const im = new THREE.InstancedMesh(geos[kind], matVC, mats.length);
     mats.forEach((m, i) => im.setMatrixAt(i, m));
     im.instanceMatrix.needsUpdate = true;
-    const tall = /pine|oak|bush|log|stone|palm|banana|bamboo/.test(kind);
+    const tall = /pine|oak|bush|log|stone|palm|banana|bamboo|arauc|ipe/.test(kind);
     im.castShadow = tall && gfx.quality === 'high'; im.receiveShadow = true;
     im.computeBoundingSphere();
     im.name = `decor_${kind}`;
@@ -268,6 +271,7 @@ export class World {
   solids = new Map<number, [number, number, number][]>();
   terrain: THREE.Mesh;
   water: THREE.Mesh;
+  private fall: THREE.ShaderMaterial | null = null;
   private bridgeOk: THREE.Mesh;
   private bridgeBroken: THREE.Mesh;
   constructor(scene: THREE.Scene) {
@@ -280,10 +284,39 @@ export class World {
     lm.vertexShader = wm.vertexShader.replace('vEdge = abs(uv.y - 0.5) * 2.0;', 'vEdge = length(uv - 0.5) * 2.0;');
     lm.fragmentShader = wm.fragmentShader.replace('step(0.965, r2) * 0.5', 'step(0.99, r2) * 0.08');
     lm.uniforms.uTime = wm.uniforms.uTime; // mesma animação do rio
-    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 40), lm);
-    lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx + 0.4, LAKE.ry + 0.4, 1); lake.position.set(LAKE.cx, -0.16, LAKE.cy);
-    lake.name = 'lake';
-    scene.add(lake);
+    for (const p of PONDS) {
+      const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 40), lm);
+      lake.rotation.x = -Math.PI / 2; lake.scale.set(p.rx + 0.4, p.ry + 0.4, 1); lake.position.set(p.cx, -0.16, p.cy);
+      lake.name = 'lake';
+      scene.add(lake);
+    }
+    void LAKE;
+    // cachoeira: lâmina de água animada caindo do penhasco no poço, com espuma embaixo
+    this.fall = new THREE.ShaderMaterial({
+      transparent: true, uniforms: { uTime: wm.uniforms.uTime },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: `uniform float uTime; varying vec2 vUv;
+        void main(){ float s = sin(vUv.x * 40.0 + sin(vUv.x * 7.0) * 3.0) * 0.5 + 0.5; float f = fract(vUv.y * 3.0 + uTime * 1.6 + s * 0.3);
+          vec3 c = mix(vec3(0.55, 0.82, 0.95), vec3(1.0), smoothstep(0.55, 1.0, f) * 0.8 + (1.0 - vUv.y) * 0.1);
+          float a = 0.85 * smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+          gl_FragColor = vec4(c, a);
+          #include <colorspace_fragment>
+        }`,
+    });
+    const fall = new THREE.Mesh(new THREE.PlaneGeometry(WATERFALL.w, WATERFALL.h, 1, 1), this.fall);
+    fall.position.set(WATERFALL.x, WATERFALL.h / 2 - 0.25, WATERFALL.z); fall.rotation.x = -0.12;
+    scene.add(fall);
+    // montanhas no horizonte, em volta do mapa (fora da área jogável)
+    const mk = new THREE.Group();
+    const cols = ['#7a9e6a', '#6f9460', '#8aa877', '#769a8a'];
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2, rx = MAP_W / 2 + MARGIN + 6, rz = MAP_H / 2 + MARGIN + 6;
+      const h = 6 + ((i * 37) % 9);
+      const m = new THREE.Mesh(mountain(i + 3, h, cols[i % 4], h > 12), matVC);
+      m.position.set(MAP_W / 2 + Math.cos(a) * rx, -0.5, MAP_H / 2 + Math.sin(a) * rz);
+      m.rotation.y = a; mk.add(m);
+    }
+    scene.add(mk);
     scene.add(this.terrain, this.water, this.bridgeOk, this.bridgeBroken, fieldFences());
     decor(scene, this.solids);
   }

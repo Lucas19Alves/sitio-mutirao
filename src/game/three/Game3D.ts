@@ -17,7 +17,9 @@ import { normalizeLook } from '../art/characters.ts';
 import { obstacleModel, obstacleSite, petModel, signPosts } from './kit/props.ts';
 import { Kit } from './kit/geo.ts';
 import { errorText } from '../../utils/errors.ts';
-import { play, footstep, type Surface } from '../audio.ts';
+import { play, footstep, ambience, type Surface } from '../audio.ts';
+import { Scenery } from './Scenery.ts';
+import { PONDS, WATERFALL } from '../../data/world.ts';
 import { PATH_TILES, inLake } from '../../data/world.ts';
 import { gfx } from '../gfx.ts';
 import { iconUrl } from '../art/icons.ts';
@@ -79,6 +81,8 @@ export class Game3D {
   private pets = new Map<string, PetView>();
   private petGeo = new Map<string, THREE.BufferGeometry>();
   private flags: Record<string, THREE.Mesh> = {};
+  private scenery!: Scenery;
+  private ambAt = 0;
   private stepDist = 0;
   private combo = 0;
   private lastGather = 0;
@@ -136,6 +140,7 @@ export class Game3D {
     this.buildBuildings();
     this.buildLocks();
     this.buildObstacles();
+    this.scenery = new Scenery(this.eng);
     const fh = BUILDING_BY_ID.farmhouse.spot;
     const flowers = WORLD_NODES.filter((n) => n.t === 'wildflower' || n.t === 'grass').slice(0, 10).map((n) => [n.x + 0.5, n.y + 0.5] as [number, number]);
     this.ambient = new Ambient(this.eng.scene, [fh.x - 1.2, fh.y + fh.h + 0.8], [[FIELDS[0].x - 1, FIELDS[0].y + 2], [FIELDS[1].x + 5, FIELDS[1].y + 1], ...flowers]);
@@ -178,7 +183,7 @@ export class Game3D {
       bus.on('recenter', () => { this.camFocus = null; }),
       bus.on('ctxpanel', (on: boolean) => { this.ctxOpen = on; }),
       bus.on('pose', (n: string) => this.setPose(n, 1100)),
-      gfx.subscribe(() => this.eng.applyQuality()),
+      gfx.subscribe(() => { this.eng.applyQuality(); const lite = gfx.quality === 'low'; this.me.setLite(lite); for (const a of this.remotes.values()) a.setLite(lite); }),
     );
     this.onPresence(realtime.metas, true);
     this.refreshPets();
@@ -447,6 +452,15 @@ export class Game3D {
     return out.filter((o) => Math.abs(o.x - this.me.x) < 1.5 && Math.abs(o.z - this.me.z) < 1.5);
   }
 
+  /** 0..1: quão perto da água (rio, lagos e principalmente a cachoeira). */
+  private waterNear() {
+    const x = this.me.x, z = this.me.z;
+    let d = Math.min(Math.abs(z - (RIVER.y0 + RIVER.y1) / 2) - 1.5, 99);
+    for (const p of PONDS) d = Math.min(d, (Math.hypot((x - p.cx) / p.rx, (z - p.cy) / p.ry) - 1) * Math.min(p.rx, p.ry));
+    const fall = Math.hypot(x - WATERFALL.x, z - WATERFALL.z);
+    return Math.max(Math.max(0, 1 - d / 9) * 0.7, Math.max(0, 1 - fall / 14));
+  }
+
   /** Piso sob o jogador, para o som dos passos. */
   private surface(x: number, z: number): Surface {
     const tx = Math.floor(x), tz = Math.floor(z);
@@ -536,6 +550,8 @@ export class Game3D {
     this.fx.update(dt); this.drops.update(dt); this.smoke.update(dt);
     this.world.update(dt, t);
     this.ambient.update(dt, t, this.camTarget);
+    this.scenery.update(store.now(), t, this.camTarget);
+    if ((this.ambAt -= dt) <= 0) { this.ambAt = 1; ambience({ night: this.scenery.night, water: this.waterNear(), wind: Math.min(1, this.me.z < 20 ? 0.8 : 0.3) }); }
     this.updateCamera(dt);
     this.bubble.pos.set(me.x, 0, me.z);
     if (this.bubble.on && performance.now() > this.bubbleUntil) this.bubble.on = false;
@@ -792,7 +808,7 @@ export class Game3D {
       const nodes = WORLD_NODES.filter((n) => n.t === w.node && n.r === w.region);
       const node = nodes.sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y))[Math.floor(Math.random() * Math.min(3, nodes.length))] ?? nodes[0];
       if (!node) continue;
-      const av = new Avatar3D(this.eng.scene, this.overlay, home.x + 0.5, home.y + 0.5, `${w.name} · ${w.role}`, w.look, false);
+      const av = new Avatar3D(this.eng.scene, this.overlay, home.x + 0.5, home.y + 0.5, `${w.name} · ${w.role}`, w.look, false, true);
       av.tag.el.classList.add('helper');
       this.helpers.set(id, { id, av, path: [], state: 'go', t: 0, node: [node.x, node.y], home: [home.x, home.y] });
     }
@@ -1181,7 +1197,7 @@ export class Game3D {
       const [qx, qz] = this.queueSpot(i);
       if (!c) {
         const sx = 28.5, sz = 24.5; // chegam pela estrada
-        const av = new Avatar3D(this.eng.scene, this.overlay, sx, sz, `${o.order_key === 'vip' ? '⭐ ' : ''}${o.npc}`, npcLook(o.npc), false);
+        const av = new Avatar3D(this.eng.scene, this.overlay, sx, sz, `${o.order_key === 'vip' ? '⭐ ' : ''}${o.npc}`, npcLook(o.npc), false, true);
         av.tag.on = false; // o balão do pedido já identifica o cliente
         const tag = this.overlay.tag('', 'w-order', new THREE.Vector3(sx, 0, sz), 2.35);
         c = { slot: o.slot, key, av, tag, state: 'in', tx: qx, tz: qz, t: 0, html: '' };

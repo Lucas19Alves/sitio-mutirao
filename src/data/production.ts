@@ -33,6 +33,7 @@ export const CROPS: CropDef[] = [
   { id: 'cassava', level: 11, seed: 4, time: 110, yield: 4, xp: 6, color: '#7cb342' },
   { id: 'sugarcane', level: 12, seed: 5, time: 130, yield: 4, xp: 7, tool: 'sickle', color: '#9ccc65' },
   { id: 'coffee', level: 18, seed: 9, time: 200, yield: 4, xp: 12, color: '#c0392b' },
+  { id: 'erva_mate', level: 31, seed: 12, time: 240, yield: 4, xp: 15, tool: 'sickle', color: '#6b8e23' },
 ];
 
 export interface NodeDef {
@@ -74,6 +75,8 @@ export const NODES: NodeDef[] = [
   { id: 'banana_tree', name: 'Bananeira', item: 'banana', qty: 3, tier: 0, hits: 1, respawn: 100, xp: 3, solid: true },
   { id: 'cacao_tree', name: 'Cacaueiro', item: 'cocoa', qty: 3, tier: 0, hits: 1, respawn: 120, xp: 3, solid: true },
   { id: 'acai_palm', name: 'Açaizeiro', item: 'acai', qty: 3, tier: 0, hits: 1, respawn: 120, xp: 4, solid: true },
+  { id: 'araucaria', name: 'Araucária', item: 'pinhao', qty: 3, tier: 0, hits: 1, respawn: 150, xp: 6, solid: true },
+  { id: 'ipe_tree', name: 'Ipê Florido', item: 'ipe_wood', qty: 2, tool: 'axe', tier: 3, hits: 4, respawn: 180, xp: 9, solid: true },
   { id: 'bamboo', name: 'Touceira de Bambu', item: 'bamboo', qty: 2, tool: 'axe', tier: 1, hits: 3, respawn: 90, xp: 4, solid: true },
 ];
 
@@ -224,6 +227,11 @@ export const RECIPES: RecipeDef[] = [
   r('bamboo_flute', 'bamboo_shop', 26, { bamboo: 3 }, 150, 10),
   r('bamboo_lamp', 'bamboo_shop', 27, { bamboo: 4, glass: 1 }, 200, 18),
   r('acai_bowl', 'acai_bar', 27, { acai: 4, banana: 1, sugar: 1 }, 120, 18),
+  r('pinhao_cozido', 'casa_pinhao', 30, { pinhao: 4 }, 90, 12),
+  r('pacoca_pinhao', 'casa_pinhao', 31, { pinhao: 3, sugar: 1, cassava_flour: 1 }, 150, 22),
+  r('chimarrao', 'casa_pinhao', 32, { erva_mate: 3, clay_pot: 1 }, 120, 16),
+  r('viola', 'luthier', 35, { ipe_wood: 4, metal_parts: 1, thread: 2 }, 300, 48),
+  r('rabeca', 'luthier', 36, { ipe_wood: 3, thread: 3, cloth: 1 }, 240, 44),
 ];
 
 export const CROP_BY_ID = Object.fromEntries(CROPS.map((x) => [x.id, x])) as Record<string, CropDef>;

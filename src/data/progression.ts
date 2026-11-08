@@ -87,12 +87,15 @@ export const CONTRACTS: ContractDef[] = [
   c('cafe_da_manha', 'Pousada da Serra', 'Café da manhã da pousada', 21, { cafe_com_leite: 10, banana_cake: 6, pao_de_queijo: 10 }, 6800, 980, 8),
   c('aniversario', 'Dona Benta Doceira', 'Aniversário na praça', 23, { brigadeiro: 15, chocolate: 10, yogurt: 8 }, 7600, 1100, 9),
   c('feira_artesanato', 'Cacá Artesã', 'Feira de artesanato', 28, { bamboo_flute: 12, bamboo_lamp: 8, acai_bowl: 10 }, 9800, 1400, 10),
+  c('festa_serra', 'Pousada da Serra', 'Festa do Pinhão', 31, { pinhao_cozido: 15, pacoca_pinhao: 8, chimarrao: 10 }, 12000, 1700, 12),
+  c('cantoria', 'Mestre Otávio', 'Cantoria de viola', 35, { viola: 4, rabeca: 4, bamboo_flute: 10 }, 16000, 2200, 14),
 ];
 
 export const ORDER_NPCS = [
   'Dona Cida', 'Seu Zé', 'Marina', 'Juca', 'Tia Nena', 'Pedro Pescador', 'Lia da Venda', 'Professor Abel',
   'Rosa Florista', 'Caio Carteiro', 'Vó Dita', 'Bia Ciclista', 'Mestre Otávio', 'Dona Filó',
   'Seu Quim Pescador', 'Dona Benta Doceira', 'Tião Tropeiro', 'Iara do Lago', 'Padre Zezinho', 'Nina Barista', 'Zé do Engenho', 'Cacá Artesã',
+  'Seu Lindolfo da Serra', 'Dona Ivone Violeira', 'Guará Guia', 'Lu Fotógrafa',
 ];
 
 export const CONFIG = {

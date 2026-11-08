@@ -22,6 +22,8 @@ const tmpE = new THREE.Euler();
 const tmpC = new THREE.Color();
 
 export class Kit {
+  /** 1 = normal; menor = menos segmentos (modelos leves) */
+  static detail = 1;
   private parts: THREE.BufferGeometry[] = [];
   skinned = false;
   windy = false;
@@ -81,12 +83,12 @@ export class Kit {
     const g = radius > 0.001 ? new RoundedBoxGeometry(w, h, d, 1, radius) : new THREE.BoxGeometry(w, h, d);
     return this.add(g, color, o);
   }
-  cyl(rt: number, rb: number, h: number, color: THREE.ColorRepresentation, o: PartOpts = {}, seg = 12) { return this.add(new THREE.CylinderGeometry(rt, rb, h, seg, 1), color, o); }
-  sphere(r: number, color: THREE.ColorRepresentation, o: PartOpts = {}, ws = 10, hs = 7) { return this.add(new THREE.SphereGeometry(r, ws, hs), color, o); }
+  cyl(rt: number, rb: number, h: number, color: THREE.ColorRepresentation, o: PartOpts = {}, seg = 12) { return this.add(new THREE.CylinderGeometry(rt, rb, h, Math.max(5, Math.round(seg * Kit.detail)), 1), color, o); }
+  sphere(r: number, color: THREE.ColorRepresentation, o: PartOpts = {}, ws = 10, hs = 7) { return this.add(new THREE.SphereGeometry(r, Math.max(5, Math.round(ws * Kit.detail)), Math.max(3, Math.round(hs * Kit.detail))), color, o); }
   ico(r: number, color: THREE.ColorRepresentation, o: PartOpts = {}, detail = 1) { return this.add(new THREE.IcosahedronGeometry(r, detail), color, { flat: true, ...o }); }
-  capsule(r: number, len: number, color: THREE.ColorRepresentation, o: PartOpts = {}) { return this.add(new THREE.CapsuleGeometry(r, len, 3, 8), color, o); }
-  cone(r: number, h: number, color: THREE.ColorRepresentation, o: PartOpts = {}, seg = 10) { return this.add(new THREE.ConeGeometry(r, h, seg, 1), color, o); }
-  torus(r: number, t: number, color: THREE.ColorRepresentation, o: PartOpts = {}, arc = Math.PI * 2) { return this.add(new THREE.TorusGeometry(r, t, 6, 16, arc), color, o); }
+  capsule(r: number, len: number, color: THREE.ColorRepresentation, o: PartOpts = {}) { return this.add(new THREE.CapsuleGeometry(r, len, Kit.detail < 1 ? 1 : 3, Kit.detail < 1 ? 5 : 8), color, o); }
+  cone(r: number, h: number, color: THREE.ColorRepresentation, o: PartOpts = {}, seg = 10) { return this.add(new THREE.ConeGeometry(r, h, Math.max(4, Math.round(seg * Kit.detail)), 1), color, o); }
+  torus(r: number, t: number, color: THREE.ColorRepresentation, o: PartOpts = {}, arc = Math.PI * 2) { return this.add(new THREE.TorusGeometry(r, t, Kit.detail < 1 ? 4 : 6, Kit.detail < 1 ? 8 : 16, arc), color, o); }
   /** Prisma triangular (telhado de duas águas): largura w (x), altura h, profundidade d (z). */
   prism(w: number, h: number, d: number, color: THREE.ColorRepresentation, o: PartOpts = {}) {
     const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.closePath();

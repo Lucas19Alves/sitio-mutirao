@@ -156,6 +156,10 @@ export const BUILDINGS: BuildingDef[] = [
   // Mata da Cachoeira
   b('bamboo_shop', 'Ateliê de Bambu', 'producer', 'mata', 26, { x: 56, y: 54, w: 4, h: 3 },
     { coins: 6000, items: { beam: 30, cloth: 10, metal_parts: 6 } }, 'Flautas e luminárias de bambu.', '', '#7cb342', '#f1f8e9'),
+  b('casa_pinhao', 'Casa do Pinhão', 'producer', 'serra', 30, { x: 114, y: 30, w: 4, h: 3 },
+    { coins: 9000, items: { beam: 40, brick: 30, metal_parts: 10 } }, 'Pinhão cozido, paçoca de pinhão e chimarrão.', '', '#5d4037', '#d7ccc8'),
+  b('luthier', 'Luthieria', 'producer', 'varzea', 34, { x: 60, y: 94, w: 5, h: 3 },
+    { coins: 14000, items: { beam: 40, metal_parts: 20, glass: 20 } }, 'Violas caipiras e rabecas de ipê.', '', '#8d6e63', '#fff8e1'),
   b('acai_bar', 'Quiosque de Açaí', 'producer', 'mata', 27, { x: 64, y: 54, w: 4, h: 3 },
     { coins: 6500, items: { brick: 30, glass: 20, metal_parts: 8 } }, 'Tigelas de açaí com banana.', '', '#6a1b9a', '#f3e5f5'),
 ];
@@ -179,10 +183,12 @@ export const REGIONS: RegionDef[] = [
   { id: 'colinas', name: 'Colinas', desc: 'Rochedos, carvão, cobre e ferro. Fundição e ferraria.', rect: { x: 2, y: 2, w: 32, h: 16 }, level: 12, cost: { coins: 1800, items: { brick: 40, beam: 20, rope: 20 } }, ground: '#a7b26b' },
   { id: 'vale', name: 'Vale das Flores', desc: 'Pétalas, rosas, tulipas e lavanda. Apiário e floricultura.', rect: { x: 34, y: 2, w: 28, h: 16 }, level: 17, cost: { coins: 3500, items: { brick: 30, glass: 20, cloth: 10 } }, ground: '#b5d77a' },
   { id: 'planalto', name: 'Planalto Industrial', desc: 'Ouro e cristais. Joalheria.', rect: { x: 2, y: 36, w: 20, h: 14 }, level: 23, cost: { coins: 7000, items: { metal_parts: 30, brick: 40, beam: 20 } }, needs: 'great_workshop', ground: '#b9a77a' },
-  { id: 'pasto', name: 'Pastagem', desc: 'Galinhas, vacas, cana e mandioca. Laticínio, engenho e casa de farinha.', rect: { x: 2, y: 50, w: 48, h: 28 }, level: 10, cost: { coins: 1200, items: { plank: 40, rope: 20, beam: 10 } }, ground: '#9fd06a' },
-  { id: 'lago', name: 'Lago das Garças', desc: 'Pesca, junco e areia. Peixaria.', rect: { x: 62, y: 24, w: 36, h: 26 }, level: 13, cost: { coins: 2200, items: { brick: 25, beam: 15, rope: 20 } }, ground: '#94c973' },
-  { id: 'cafezal', name: 'Cafezal da Serra', desc: 'Café, bananeiras e cacau. Torrefação e confeitaria.', rect: { x: 62, y: 2, w: 36, h: 22 }, level: 18, cost: { coins: 4000, items: { brick: 40, glass: 15, beam: 20 } }, ground: '#8fb85c' },
-  { id: 'mata', name: 'Mata da Cachoeira', desc: 'Bambu, açaí e madeira de lei. Ateliê de bambu e quiosque de açaí.', rect: { x: 50, y: 50, w: 48, h: 28 }, level: 25, cost: { coins: 9000, items: { metal_parts: 20, beam: 40, cloth: 15 } }, ground: '#5f9a48' },
+  { id: 'pasto', name: 'Pastagem', desc: 'Galinhas, vacas, cana e mandioca. Laticínio, engenho e casa de farinha.', rect: { x: 2, y: 50, w: 48, h: 40 }, level: 10, cost: { coins: 1200, items: { plank: 40, rope: 20, beam: 10 } }, ground: '#9fd06a' },
+  { id: 'lago', name: 'Lago das Garças', desc: 'Pesca, junco e areia. Peixaria.', rect: { x: 62, y: 24, w: 46, h: 26 }, level: 13, cost: { coins: 2200, items: { brick: 25, beam: 15, rope: 20 } }, ground: '#94c973' },
+  { id: 'cafezal', name: 'Cafezal da Serra', desc: 'Café, bananeiras e cacau. Torrefação e confeitaria.', rect: { x: 62, y: 2, w: 46, h: 22 }, level: 18, cost: { coins: 4000, items: { brick: 40, glass: 15, beam: 20 } }, ground: '#8fb85c' },
+  { id: 'mata', name: 'Mata da Cachoeira', desc: 'Bambu, açaí, madeira de lei e a cachoeira. Ateliê de bambu e quiosque de açaí.', rect: { x: 50, y: 50, w: 78, h: 40 }, level: 25, cost: { coins: 9000, items: { metal_parts: 20, beam: 40, cloth: 15 } }, ground: '#5f9a48' },
+  { id: 'serra', name: 'Serra da Neblina', desc: 'Araucárias, pinhão, erva-mate e ouro. Casa do Pinhão.', rect: { x: 108, y: 2, w: 20, h: 48 }, level: 30, cost: { coins: 12000, items: { metal_parts: 30, beam: 50, brick: 50 } }, ground: '#88a86a' },
+  { id: 'varzea', name: 'Várzea dos Ipês', desc: 'Ipês floridos, flores e a lagoa. Luthieria.', rect: { x: 2, y: 90, w: 126, h: 12 }, level: 34, cost: { coins: 16000, items: { metal_parts: 40, glass: 40, cloth: 30 } }, ground: '#a6d47a' },
 ];
 
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map((x) => [x.id, x])) as Record<string, BuildingDef>;

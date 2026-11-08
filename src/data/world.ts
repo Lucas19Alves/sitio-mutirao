@@ -5,16 +5,20 @@ import { NODE_BY_ID } from './production.ts';
 import { FIELDS } from './fields.ts';
 
 export const TILE = 32;
-export const MAP_W = 100;
-export const MAP_H = 80;
+export const MAP_W = 130;
+export const MAP_H = 104;
 
 /** Rio corre na faixa y 44..46 de ponta a ponta, com duas pontes. */
 export const RIVER = { y0: 44, y1: 46 };
-export const BRIDGES = [{ x0: 30, x1: 31 }, { x0: 52, x1: 53 }, { x0: 80, x1: 81 }];
+export const BRIDGES = [{ x0: 30, x1: 31 }, { x0: 52, x1: 53 }, { x0: 80, x1: 81 }, { x0: 112, x1: 113 }];
 
 /** Lago das Garças (elipse, em tiles). */
 export const LAKE = { cx: 80, cy: 33, rx: 9, ry: 5.5 };
-export const inLake = (x: number, y: number) => ((x + 0.5 - LAKE.cx) / LAKE.rx) ** 2 + ((y + 0.5 - LAKE.cy) / LAKE.ry) ** 2 <= 1;
+/** Poço da cachoeira (Mata) e lagoa da Várzea. */
+export const PONDS = [LAKE, { cx: 100, cy: 72, rx: 5, ry: 3.5 }, { cx: 40, cy: 97, rx: 6, ry: 3 }];
+export const inLake = (x: number, y: number) => PONDS.some((p) => ((x + 0.5 - p.cx) / p.rx) ** 2 + ((y + 0.5 - p.cy) / p.ry) ** 2 <= 1);
+/** Cachoeira: cai do penhasco no poço da Mata. */
+export const WATERFALL = { x: 100, z: 68.4, w: 3.2, h: 4.2 };
 
 /** Caminhos de terra (polilinhas em tiles, largura 1 tile). */
 export const PATHS: [number, number][][] = [
@@ -43,6 +47,15 @@ export const PATHS: [number, number][][] = [
   [[4, 64], [60, 64]],
   [[52, 50], [52, 64]],
   [[60, 62], [94, 62]],
+  // v1.5
+  [[96, 24], [126, 24]],
+  [[80, 9], [124, 9]],
+  [[112, 24], [112, 43]],
+  [[112, 47], [112, 62]],
+  [[94, 62], [112, 62]],
+  [[30, 64], [30, 90]],
+  [[4, 92], [126, 92]],
+  [[70, 64], [70, 92]],
 ];
 
 
@@ -57,10 +70,12 @@ const NODE_PLAN: Record<string, [string, number][]> = {
   colinas: [['rock_big', 9], ['rock_small', 5], ['coal', 7], ['copper', 7], ['iron', 7]],
   vale: [['wildflower', 14], ['tree_oak', 5], ['rock_small', 3], ['grass', 4]],
   planalto: [['gold', 6], ['crystal', 5], ['coal', 5], ['rock_big', 4]],
-  pasto: [['grass', 12], ['tree_oak', 7], ['wildflower', 6], ['rock_small', 5]],
-  lago: [['fish_spot', 9], ['deep_spot', 5], ['reeds', 8], ['tree_oak', 5], ['sand', 5]],
-  cafezal: [['banana_tree', 8], ['cacao_tree', 7], ['tree_oak', 5], ['rock_small', 5], ['herb_bush', 4]],
-  mata: [['tree_big', 8], ['acai_palm', 8], ['bamboo', 9], ['mushroom', 5], ['crystal', 3], ['rock_big', 4]],
+  pasto: [['grass', 16], ['tree_oak', 10], ['wildflower', 9], ['rock_small', 7]],
+  lago: [['fish_spot', 11], ['deep_spot', 6], ['reeds', 10], ['tree_oak', 8], ['sand', 6]],
+  cafezal: [['banana_tree', 11], ['cacao_tree', 9], ['tree_oak', 8], ['rock_small', 6], ['herb_bush', 6]],
+  mata: [['tree_big', 12], ['acai_palm', 12], ['bamboo', 12], ['mushroom', 8], ['crystal', 4], ['rock_big', 6], ['herb_bush', 5]],
+  serra: [['araucaria', 12], ['rock_big', 8], ['gold', 4], ['crystal', 4], ['herb_bush', 5], ['tree_oak', 4]],
+  varzea: [['ipe_tree', 12], ['wildflower', 14], ['reeds', 8], ['clay', 6], ['grass', 8]],
 };
 const WATER_NODES = new Set(['fish_spot', 'deep_spot']);
 

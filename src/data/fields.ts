@@ -44,6 +44,7 @@ export const FIELDS: FieldDef[] = [
   f('cassava', 'Roça de Mandioca', ['cassava'], 'pasto', 14, 66, 3, 2, 11, { coins: 450, items: { plank: 12, stone: 12 } }, [{ coins: 900, items: { beam: 6, rope: 8 } }, { coins: 2000, items: { brick: 12, sack: 4 } }], '#7cb342', '#7a5230'),
   f('cane', 'Canavial', ['sugarcane'], 'pasto', 22, 66, 4, 2, 12, { coins: 600, items: { plank: 16, beam: 4 } }, [{ coins: 1200, items: { beam: 8, nails: 6 } }, { coins: 2600, items: { brick: 16, metal_parts: 2 } }], '#9ccc65', '#8a6440'),
   f('coffee', 'Cafezal', ['coffee'], 'cafezal', 84, 4, 4, 2, 18, { coins: 1400, items: { beam: 12, brick: 12 } }, [{ coins: 2800, items: { metal_parts: 3, beam: 10 } }, { coins: 5500, items: { metal_parts: 6, glass: 10 } }], '#c0392b', '#6d4c41'),
+  f('mate', 'Ervatal', ['erva_mate'], 'serra', 116, 14, 3, 2, 31, { coins: 5000, items: { beam: 20, brick: 20 } }, [{ coins: 9000, items: { metal_parts: 8, beam: 16 } }, { coins: 16000, items: { metal_parts: 12, glass: 16 } }], '#6b8e23', '#6d4c41'),
   f('pumpkin', 'Aboboral', ['pumpkin'], 'rio', 33, 47, 6, 1, 19, { coins: 1500, items: { beam: 12, brick: 14 } }, [{ coins: 3000, items: { metal_parts: 3, crate: 6 } }, { coins: 6000, items: { metal_parts: 6, cabinet: 1 } }], '#f28a26', '#7e5634', { obs: 'pontes' }),
 ];
 

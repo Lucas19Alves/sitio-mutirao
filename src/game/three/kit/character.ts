@@ -320,8 +320,12 @@ export class Character3D {
   private pile: THREE.Group;
   lookKey = '';
 
-  constructor(look: unknown) {
+  lite = false;
+  private cur!: Look;
+  constructor(look: unknown, lite = false) {
+    this.lite = lite;
     const L = normalizeLook(look);
+    this.cur = L;
     this.lookKey = lookKey(L);
     BONES.forEach(([name, p, x, y, z], i) => {
       const bone = new THREE.Bone(); bone.name = name; bone.position.set(x, y, z);
@@ -345,10 +349,21 @@ export class Character3D {
   }
 
   private geometry(L: Look) {
-    const key = lookKey(L);
+    const key = lookKey(L) + (this.lite ? ':lite' : '');
     let g = geoCache.get(key);
-    if (!g) { g = buildGeometry(L); geoCache.set(key, g); }
+    if (!g) {
+      const prev = Kit.detail; Kit.detail = this.lite ? 0.45 : 1;
+      try { g = buildGeometry(L); } finally { Kit.detail = prev; }
+      geoCache.set(key, g);
+    }
     return g;
+  }
+
+  /** Troca entre o modelo normal e o leve (modo gráfico Leve). */
+  setLite(v: boolean) {
+    if (v === this.lite) return;
+    this.lite = v;
+    this.mesh.geometry = this.geometry(this.cur);
   }
 
   setLook(look: unknown) {
@@ -356,6 +371,7 @@ export class Character3D {
     const key = lookKey(L);
     if (key === this.lookKey) return;
     this.lookKey = key;
+    this.cur = L;
     this.mesh.geometry = this.geometry(L);
   }
 

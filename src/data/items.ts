@@ -142,6 +142,15 @@ export const ITEMS: ItemDef[] = [
   i('bamboo_flute', 'Flauta de bambu', 'goods', 41, 26, 'rope', '#a5c36a', '#6f8f3a'),
   i('bamboo_lamp', 'Luminária de bambu', 'goods', 84, 27, 'lamp', '#a5c36a', '#fff3c4'),
   i('acai_bowl', 'Tigela de açaí', 'goods', 88, 27, 'bowl', '#6a1b9a', '#f6d84a'),
+  // v1.5 — Serra da Neblina e Várzea dos Ipês
+  i('pinhao', 'Pinhão', 'fruit', 7, 30, 'root', '#8d4f2b', '#d7b98e', 'Semente da araucária, colhida na serra.'),
+  i('erva_mate', 'Erva-mate', 'crop', 6, 31, 'leaf', '#6b8e23', '#33691e', 'Folhas do ervatal da serra.'),
+  i('ipe_wood', 'Madeira de ipê', 'raw', 12, 34, 'log', '#7b4a2b', '#e6b23a', 'Madeira nobre dos ipês da várzea.'),
+  i('pinhao_cozido', 'Pinhão cozido', 'goods', 45, 30, 'bowl', '#8d4f2b', '#d7b98e'),
+  i('pacoca_pinhao', 'Paçoca de pinhão', 'goods', 108, 31, 'cake', '#c9a96e', '#8d4f2b'),
+  i('chimarrao', 'Chimarrão', 'goods', 59, 32, 'cup', '#6b8e23', '#8d6e63'),
+  i('viola', 'Viola caipira', 'goods', 276, 35, 'musicbox', '#7b4a2b', '#f2c230'),
+  i('rabeca', 'Rabeca', 'goods', 247, 36, 'musicbox', '#a0522d', '#fff8e1'),
 ];
 
 export const ITEM_BY_ID: Record<string, ItemDef> = Object.fromEntries(ITEMS.map((x) => [x.id, x]));

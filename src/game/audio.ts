@@ -177,3 +177,39 @@ export function footstep(s: Surface, run = false) {
     case 'water': noise(0.14, 0.2 * v, 1300, { sweep: -700, wet: 0.2 }); break;
   }
 }
+
+// ---------------------------------------------------------------- ambiente (água, vento, pássaros, grilos)
+let ambWater: GainNode | null = null, ambWind: GainNode | null = null;
+let nextBird = 0, nextCricket = 0;
+function loopNoise(freq: number, type: BiquadFilterType, q = 0.7): GainNode | null {
+  if (!ctx || !sfxBus) return null;
+  const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let b = 0; for (let i = 0; i < len; i++) { b = b * 0.97 + (Math.random() * 2 - 1) * 0.03; d[i] = b * 6 + (Math.random() * 2 - 1) * 0.15; }
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = freq; fl.Q.value = q;
+  const g = ctx.createGain(); g.gain.value = 0;
+  src.connect(fl).connect(g).connect(sfxBus); src.start();
+  return g;
+}
+/** Chamado ~1×/s pelo jogo: night 0..1, water 0..1 (perto de rio, lago, cachoeira), wind 0..1. */
+export function ambience(o: { night: number; water: number; wind: number }) {
+  if (!ctx || !sfxBus) return;
+  if (!ambWater) { ambWater = loopNoise(900, 'bandpass', 0.6); ambWind = loopNoise(380, 'lowpass', 0.5); }
+  const t = ctx.currentTime;
+  ambWater?.gain.setTargetAtTime(muted ? 0 : 0.11 * o.water, t, 0.8);
+  ambWind?.gain.setTargetAtTime(muted ? 0 : 0.035 + 0.05 * o.wind, t, 1.5);
+  if (muted) return;
+  const now = performance.now();
+  // pássaros de dia: trinados curtos em escala alta
+  if (o.night < 0.5 && now > nextBird) {
+    nextBird = now + 1800 + Math.random() * 5200;
+    const base = 2200 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 4), pan = Math.random() * 1.6 - 0.8;
+    for (let i = 0; i < n; i++) tone(base * (1 + (i % 2) * 0.12), 0.07, { gain: 0.025, delay: i * 0.09, slide: (Math.random() - 0.5) * 900, wet: 0.9, pan });
+  }
+  // grilos à noite: pulsos agudos
+  if (o.night > 0.4 && now > nextCricket) {
+    nextCricket = now + 900 + Math.random() * 1600;
+    const f = 4200 + Math.random() * 600, pan = Math.random() * 1.6 - 0.8;
+    for (let i = 0; i < 4; i++) tone(f, 0.03, { type: 'triangle', gain: 0.02 * o.night, delay: i * 0.05, wet: 0.5, pan });
+  }
+}

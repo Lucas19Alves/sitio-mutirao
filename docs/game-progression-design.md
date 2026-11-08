@@ -254,3 +254,45 @@ O que saiu da tela:
 - o minimapa aberto por padrão. Ele agora se liga em Ajustes.
 
 No celular, com um menu aberto, a HUD sai de cena.
+
+## Mapa e ambientação (v1.5)
+
+**Mapa.** Passou de 100×80 para 130×104. As regiões antigas ficaram iguais (IDs dos recursos preservados). As regiões da v1.3 cresceram:
+
+| Região | Antes | Agora |
+|---|---|---|
+| Cafezal | 36×22 | 46×22 |
+| Lago | 36×26 | 46×26 |
+| Pastagem | 48×28 | 48×40 |
+| Mata | 48×28 | 78×40 |
+
+Regiões novas:
+
+| Região | Nível | Obstáculo | Conteúdo |
+|---|---|---|---|
+| Serra da Neblina | 30 | muro de pedra, picareta 4 | araucárias (pinhão), ouro, cristal, Ervatal (erva-mate), Casa do Pinhão (pinhão cozido, paçoca de pinhão, chimarrão) e um mirante |
+| Várzea dos Ipês | 34 | ipê tombado, machado 5 | ipês floridos (madeira de ipê), flores, lagoa, Luthieria (viola caipira, rabeca) |
+
+A campanha ganhou as missões m64 a m70. Também há dois contratos novos (Festa do Pinhão e Cantoria de viola) e quatro clientes.
+
+**Paisagem:**
+
+- **Cachoeira:** cai de um penhasco num poço da Mata, com pedras em volta e banco.
+- **Água:** lagoa na Várzea e uma quarta ponte no rio.
+- **Horizonte:** montanhas ao redor do mapa, algumas com neve.
+- **Estradas e entradas:** lampiões ao longo de todas as estradas e placas com o nome de cada região na entrada.
+- **Adereços:** espantalhos nos campos, fardos de feno na Pastagem, floreiras no Vale e na Várzea, bancos, píer no lago, gazebo no Vale, mirante e muretas de pedra na Serra.
+
+**Dia e noite:**
+
+- Um dia de jogo dura 24 minutos, pelo relógio do servidor, então todo mundo vê a mesma hora.
+- O entardecer e o amanhecer deixam a luz dourada.
+- À noite a luz fica azulada e ainda dá para jogar, os lampiões acendem e aparecem vaga-lumes.
+
+**Som de fundo:** o rio, o lago e a cachoeira aumentam conforme o jogador chega perto. Há vento, mais forte nas colinas, passarinhos de dia e grilos à noite.
+
+**Desempenho:**
+
+- No modo gráfico Leve, os personagens usam um modelo simplificado (cerca de 1/3 dos triângulos), sem silhueta extra e sem sombra.
+- Clientes e ajudantes usam sempre o modelo simplificado.
+- Aparelhos com até 4 núcleos ou 3 GB de memória começam no modo Leve.

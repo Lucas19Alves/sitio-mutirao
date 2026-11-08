@@ -119,6 +119,10 @@ const P: Record<string, Painter> = {
     for (let i = 0; i < 5; i++) k.ico(0.12 * s, i % 2 ? '#2e7d32' : '#388e3c', { p: [x + (r() - 0.5) * 0.12, (0.18 + i * 0.09) * s, z + (r() - 0.5) * 0.12], wind: 0.6 }, 0);
     if (ripe) for (let i = 0; i < 8; i++) k.sphere(0.025, ripe === 2 ? '#c0392b' : '#8bc34a', { p: [x + (r() - 0.5) * 0.24, (0.15 + r() * 0.4) * s, z + 0.1], wind: 0.6 }, 5, 4);
   },
+  erva_mate(k, x, z, s, ripe, r) {
+    k.cyl(0.02, 0.03, 0.3 * s, '#6d4c41', { p: [x, 0.15 * s, z] }, 5);
+    for (let i = 0; i < 6; i++) k.ico(0.1 * s, ripe === 2 ? '#4f7d1f' : '#6b8e23', { p: [x + (r() - 0.5) * 0.14, (0.3 + i * 0.06) * s, z + (r() - 0.5) * 0.14], wind: 0.7 }, 0);
+  },
   lavender(k, x, z, s, ripe) {
     for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const h = (0.35 + (i % 2) * 0.06) * s;
       k.cyl(0.006, 0.008, h, '#7a9a6a', { p: [x + Math.cos(a) * 0.05, h / 2, z + Math.sin(a) * 0.05], r: [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3], wind: 1.4 }, 3);

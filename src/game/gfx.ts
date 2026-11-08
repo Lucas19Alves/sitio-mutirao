@@ -8,7 +8,9 @@ const prefersReduced = () => typeof matchMedia !== 'undefined' && matchMedia('(p
 const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
 // celulares começam em Média (sombras só do que importa); dá para subir em Ajustes
-let quality = load('sm-quality', coarse() ? 'medium' : 'high') as Quality;
+const weak = () => { const n = navigator as Navigator & { deviceMemory?: number }; return (n.hardwareConcurrency ?? 8) <= 4 || (n.deviceMemory ?? 8) <= 3; };
+// celulares começam em Média; aparelhos fracos (até 4 núcleos ou 3 GB) em Leve; dá para mudar em Ajustes
+let quality = load('sm-quality', coarse() ? (weak() ? 'low' : 'medium') : 'high') as Quality;
 let effects = load('sm-effects', '1') === '1';
 let reduceMotion = load('sm-reduce', prefersReduced() ? '1' : '0') === '1';
 let joystick = load('sm-joy', coarse() ? '1' : '0') === '1';

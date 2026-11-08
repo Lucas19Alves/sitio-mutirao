@@ -6,6 +6,7 @@ import { blobShadowMaterial } from './kit/materials.ts';
 import type { Overlay, Tag } from './Fx.ts';
 import { heightAt } from './World.ts';
 import { TILE } from '../../data/catalog.ts';
+import { gfx } from '../gfx.ts';
 
 export const TOOL_OF: Record<string, ToolKind> = { chop: 'axe', mine: 'pickaxe', dig: 'shovel', harvest: 'sickle', build: 'hammer', plant: 'seeds' };
 // silhueta: desenhada depois do cenário e ANTES do personagem; onde o corpo aparece ele a cobre,
@@ -23,13 +24,14 @@ export class Avatar3D {
   private shadow: THREE.Mesh;
   private xray: THREE.SkinnedMesh;
 
-  constructor(scene: THREE.Scene, overlay: Overlay, x: number, z: number, public name: string, look: unknown, public me: boolean) {
-    this.c = new Character3D(look);
+  constructor(scene: THREE.Scene, overlay: Overlay, x: number, z: number, public name: string, look: unknown, public me: boolean, public npc = false) {
+    this.c = new Character3D(look, npc || gfx.quality === 'low');
     scene.add(this.c.root);
     // silhueta: mesma malha e mesmo esqueleto, só aparece onde está escondida
     this.xray = new THREE.SkinnedMesh(this.c.mesh.geometry, xrayMat);
     this.xray.bind(this.c.mesh.skeleton, this.c.mesh.bindMatrix);
     this.xray.frustumCulled = false; this.xray.renderOrder = 9;
+    this.xray.visible = !this.c.lite;
     this.c.mesh.renderOrder = 10;
     this.c.mesh.parent!.add(this.xray);
     this.shadow = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16), blobShadowMaterial());
@@ -47,6 +49,15 @@ export class Avatar3D {
   setLook(look: unknown) {
     this.c.setLook(look);
     this.xray.geometry = this.c.mesh.geometry;
+  }
+
+  /** Modo gráfico mudou: jogadores trocam para o modelo leve (NPCs já são leves). */
+  setLite(v: boolean) {
+    if (this.npc) return;
+    this.c.setLite(v);
+    this.xray.geometry = this.c.mesh.geometry;
+    this.xray.visible = !v;
+    this.c.mesh.castShadow = !v;
   }
 
   play(anim: string, fade = 0.18, speed = 1) {

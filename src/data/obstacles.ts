@@ -35,6 +35,8 @@ export const OBSTACLES: ObstacleDef[] = [
   { id: 'lago', kind: 'fallen_tree', name: 'Galhada na trilha', desc: 'Um temporal derrubou galhos na trilha do lago. Ceife e abra caminho.', region: 'lago', at: { x: 63, y: 30 }, from: { x: 61, y: 30 }, tool: { t: 'sickle', tier: 2 } },
   { id: 'cafezal', kind: 'landslide', name: 'Barranco da serra', desc: 'A estrada do cafezal desbarrancou. Cave e escore com pedras.', region: 'cafezal', at: { x: 63, y: 9 }, from: { x: 61, y: 9 }, tool: { t: 'shovel', tier: 2 } },
   { id: 'mata', kind: 'brush', name: 'Mata fechada', desc: 'Cipós e taquaras fecharam a trilha da cachoeira. Abra caminho com um machado de verdade.', region: 'mata', at: { x: 51, y: 64 }, from: { x: 49, y: 64 }, tool: { t: 'axe', tier: 4 } },
+  { id: 'serra', kind: 'gate', name: 'Muro de pedra da serra', desc: 'Um muro antigo de pedra fecha a subida da serra. Abra uma passagem com picareta forte.', region: 'serra', at: { x: 109, y: 9 }, from: { x: 107, y: 9 }, tool: { t: 'pickaxe', tier: 4 } },
+  { id: 'varzea', kind: 'fallen_tree', name: 'Ipê tombado', desc: 'Um ipê centenário caiu na trilha da várzea. Corte o tronco com o melhor machado.', region: 'varzea', at: { x: 30, y: 91 }, from: { x: 30, y: 89 }, tool: { t: 'axe', tier: 5 } },
   { id: 'pontes', kind: 'bridge', name: 'Pontes quebradas', desc: 'As pontes do rio perderam as tábuas. Reconstrua para chegar à margem sul.', region: null, at: { x: 30, y: 44 }, from: { x: 30, y: 42 }, level: 9, needs: 'sawmill', cost: { coins: 400, items: { plank: 24, beam: 6, rope: 8, stone: 16 } } },
 ];
 
