@@ -15,7 +15,8 @@ import { normalizeLook } from '../game/art/characters.ts';
 import { iconUrl } from '../game/art/icons.ts';
 import { buildingPortrait, useThumbs } from '../game/art/portraits.ts';
 import { fmt } from '../utils/format.ts';
-import { sound } from '../game/audio.ts';
+import { sound, play } from '../game/audio.ts';
+import { voice } from '../game/multiplayer/voice.ts';
 import { gfx } from '../game/gfx.ts';
 import { shared } from '../game/shared.ts';
 import { WORLD_W, WORLD_H } from '../game/view.ts';
@@ -30,6 +31,7 @@ const NAV: { id: PanelId; label: string; icon: string; cat: string }[] = [
   { id: 'me', label: 'Personagem', icon: 'ui_people', cat: 'grape' },
 ];
 
+function useVoice() { return useSyncExternalStore(voice.subscribe, voice.getVersion); }
 function useSound() { return useSyncExternalStore(sound.subscribe, () => `${sound.musicOn}${sound.muted}`); }
 function useGfx() { return useSyncExternalStore(gfx.subscribe, () => `${gfx.joystick}${gfx.quality}`); }
 function useNarrow() {
@@ -119,6 +121,13 @@ function useGainFly() {
   }), []);
 }
 
+/** Contador de combo na tela (some 2,5 s depois da última coleta). */
+function useCombo() {
+  const [c, setC] = useState(0);
+  useEffect(() => { let t = 0; return bus.on('combo', (n: number) => { setC(n); clearTimeout(t); t = window.setTimeout(() => setC(0), 2500); }); }, []);
+  return c;
+}
+
 export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: PanelId) => void; panelOpen: boolean; panel?: PanelId | null }) {
   const s = useFarm();
   useTicker(1000);
@@ -163,6 +172,15 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const ms = f.progression.ms;
   const claimable = [...(ms?.side ?? []), ...(ms?.daily?.l ?? []), ms?.coop ?? null].filter((m) => m && !m.done && (f.progression.stats[m.k] ?? 0) - m.base >= m.n).length + (done ? 1 : 0);
   const joy = gfx.joystick;
+  // missão ficou pronta agora: som, brilho e aviso (recompensa antecipada)
+  const doneRef = useRef(done);
+  useEffect(() => {
+    if (done && !doneRef.current && main) { play('ready'); toast(`✨ Missão pronta: ${main.title}! Toque para receber.`, 'ok'); }
+    doneRef.current = done;
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comboN = useCombo();
+  useVoice();
+  const talking = (voice.levels.get(me.id) ?? 0) > 0.06;
   const open = (p: PanelId) => { setMore(false); onOpen(p); };
   const toggleMap = () => { const v = !mapOpen; setMapOpen(v); try { localStorage.setItem('sm-minimap', v ? '1' : '0'); } catch { /* */ } };
   const myLook = normalizeLook(me.look);
@@ -237,6 +255,8 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
         </div>
       )}
 
+      {comboN > 0 && <div className="combo-badge" key={comboN}>Combo <b>x{comboN}</b></div>}
+
       {/* missão principal: pílula compacta no canto (o centro fica livre para o mundo) */}
       {!panelOpen && main && (
         <div className={`quest-pill${done ? ' quest-done' : ''}${questOpen ? ' wide' : ''}`} data-testid="quest-card">
@@ -256,6 +276,9 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
       {!panelOpen && (
         <div className="ping-fab">
           {pingOpen && <div className="ping-menu card-paper">{PINGS.map((p) => <button key={p.k} className="chip" onClick={() => { bus.emit('ping', p.k); setPingOpen(false); }}>{p.icon} {p.text}</button>)}</div>}
+          <button className={`ibtn mic-btn${voice.on && voice.micOn && !voice.micDenied ? ' live' : ''}${talking ? ' talking' : ''}`} data-testid="mic-btn"
+            onClick={() => { if (!voice.on) void voice.join(me.id); else if (voice.micDenied) toast('Microfone bloqueado. Libere no cadeado da barra de endereço.', 'warn'); else { voice.setMic(!voice.micOn); toast(voice.micOn ? '🎙️ Microfone ligado' : '🔇 Microfone desligado', 'info'); } }}
+            aria-label={voice.micOn ? 'Silenciar microfone' : 'Ligar microfone'} aria-pressed={voice.micOn}>{!voice.on ? '🎧' : voice.micDenied || !voice.micOn ? '🔇' : '🎙️'}</button>
           <button className={`ibtn ping-btn${pingOpen ? ' on' : ''}`} onClick={() => setPingOpen(!pingOpen)} aria-label="Avisar o grupo" aria-expanded={pingOpen} data-testid="ping-btn">📣</button>
         </div>
       )}

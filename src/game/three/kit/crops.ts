@@ -97,6 +97,28 @@ const P: Record<string, Painter> = {
     }
     leaf(k, x, 0.06, z, 0.22 * s, 1.0, 0.4, '#7dbd52'); leaf(k, x, 0.06, z, 0.2 * s, 1.0, 3.5);
   },
+  oat(k, x, z, s, ripe) {
+    const col = ripe === 2 ? '#d9c38a' : ripe === 1 ? '#c2c27a' : '#8cc35a';
+    for (let i = 0; i < 7; i++) { const a = i * 0.9, h = (0.4 + (i % 3) * 0.05) * s;
+      k.cyl(0.006, 0.008, h, '#9bb85a', { p: [x + Math.cos(a) * 0.05, h / 2, z + Math.sin(a) * 0.05], r: [Math.sin(a) * 0.2, 0, Math.cos(a) * 0.2], wind: 1.7 }, 3);
+      if (ripe) for (let j = 0; j < 3; j++) k.sphere(0.018, col, { p: [x + Math.cos(a) * 0.08 + j * 0.015, h - j * 0.05, z + Math.sin(a) * 0.08], wind: 1.7 }, 5, 4); }
+  },
+  cassava(k, x, z, s, ripe) {
+    const h = 0.6 * s;
+    k.cyl(0.02, 0.025, h, '#8d6e63', { p: [x, h / 2, z], wind: 0.6 }, 5);
+    for (let i = 0; i < 5; i++) { const a = i * 1.26; for (let j = 0; j < 5; j++) k.box(0.025, 0.01, 0.13, ripe === 2 ? '#5d9e3a' : '#7cb342', { p: [x + Math.cos(a) * 0.08, h - 0.04, z + Math.sin(a) * 0.08], r: [0.4, a + (j - 2) * 0.35, 0], wind: 1.2 }, 0.003); }
+    if (ripe === 2) for (let i = 0; i < 3; i++) k.capsule(0.025, 0.1, '#d7b98e', { p: [x + (i - 1) * 0.06, 0.03, z + 0.05], r: [Math.PI / 2, 0, (i - 1) * 0.5] });
+  },
+  sugarcane(k, x, z, s, ripe) {
+    for (let i = 0; i < 3; i++) { const h = (0.85 + i * 0.1) * s, xx = x + (i - 1) * 0.06;
+      k.cyl(0.02, 0.022, h, ripe === 2 ? '#c5b35a' : '#8fbf4a', { p: [xx, h / 2, z], wind: 0.5 }, 6);
+      for (let y = 0.2; y < h; y += 0.22) k.cyl(0.025, 0.025, 0.015, '#6f8f3a', { p: [xx, y, z] }, 6);
+      for (let j = 0; j < 2; j++) leaf(k, xx, h - j * 0.1, z, 0.35 * s, 0.6, i * 2 + j * 3, '#7cb342'); }
+  },
+  coffee(k, x, z, s, ripe, r) {
+    for (let i = 0; i < 5; i++) k.ico(0.12 * s, i % 2 ? '#2e7d32' : '#388e3c', { p: [x + (r() - 0.5) * 0.12, (0.18 + i * 0.09) * s, z + (r() - 0.5) * 0.12], wind: 0.6 }, 0);
+    if (ripe) for (let i = 0; i < 8; i++) k.sphere(0.025, ripe === 2 ? '#c0392b' : '#8bc34a', { p: [x + (r() - 0.5) * 0.24, (0.15 + r() * 0.4) * s, z + 0.1], wind: 0.6 }, 5, 4);
+  },
   lavender(k, x, z, s, ripe) {
     for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2; const h = (0.35 + (i % 2) * 0.06) * s;
       k.cyl(0.006, 0.008, h, '#7a9a6a', { p: [x + Math.cos(a) * 0.05, h / 2, z + Math.sin(a) * 0.05], r: [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3], wind: 1.4 }, 3);

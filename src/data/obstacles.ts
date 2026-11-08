@@ -31,7 +31,11 @@ export const OBSTACLES: ObstacleDef[] = [
   { id: 'colinas', kind: 'gate', name: 'Portão enferrujado', desc: 'O velho portão das colinas emperrou. Troque as dobradiças e reforce as pedras.', region: 'colinas', at: { x: 33, y: 17 }, from: { x: 33, y: 19 }, tool: { t: 'pickaxe', tier: 2 } },
   { id: 'vale', kind: 'car', name: 'Caminhão quebrado', desc: 'Um caminhão sem motor trava a subida para o vale. Conserte e tire-o da estrada.', region: 'vale', at: { x: 48, y: 17 }, from: { x: 48, y: 19 }, tool: { t: 'shovel', tier: 2 } },
   { id: 'planalto', kind: 'boat', name: 'Passagem alagada', desc: 'A trilha do planalto alagou. Recupere o barco abandonado para atravessar.', region: 'planalto', at: { x: 21, y: 43 }, from: { x: 23, y: 43 }, tool: { t: 'axe', tier: 3 } },
-  { id: 'pontes', kind: 'bridge', name: 'Pontes quebradas', desc: 'As pontes do rio perderam as tábuas. Reconstrua para chegar à margem sul.', region: null, at: { x: 30, y: 44 }, from: { x: 30, y: 42 }, level: 10, needs: 'sawmill', cost: { coins: 400, items: { plank: 24, beam: 6, rope: 8, stone: 16 } } },
+  { id: 'pasto', kind: 'gate', name: 'Porteira emperrada', desc: 'A porteira da pastagem enroscou no mourão. Corte o mourão podre e solte a corrente.', region: 'pasto', at: { x: 30, y: 51 }, from: { x: 30, y: 49 }, tool: { t: 'axe', tier: 2 } },
+  { id: 'lago', kind: 'fallen_tree', name: 'Galhada na trilha', desc: 'Um temporal derrubou galhos na trilha do lago. Ceife e abra caminho.', region: 'lago', at: { x: 63, y: 30 }, from: { x: 61, y: 30 }, tool: { t: 'sickle', tier: 2 } },
+  { id: 'cafezal', kind: 'landslide', name: 'Barranco da serra', desc: 'A estrada do cafezal desbarrancou. Cave e escore com pedras.', region: 'cafezal', at: { x: 63, y: 9 }, from: { x: 61, y: 9 }, tool: { t: 'shovel', tier: 2 } },
+  { id: 'mata', kind: 'brush', name: 'Mata fechada', desc: 'Cipós e taquaras fecharam a trilha da cachoeira. Abra caminho com um machado de verdade.', region: 'mata', at: { x: 51, y: 64 }, from: { x: 49, y: 64 }, tool: { t: 'axe', tier: 4 } },
+  { id: 'pontes', kind: 'bridge', name: 'Pontes quebradas', desc: 'As pontes do rio perderam as tábuas. Reconstrua para chegar à margem sul.', region: null, at: { x: 30, y: 44 }, from: { x: 30, y: 42 }, level: 9, needs: 'sawmill', cost: { coins: 400, items: { plank: 24, beam: 6, rope: 8, stone: 16 } } },
 ];
 
 export const OBSTACLE_BY_ID = Object.fromEntries(OBSTACLES.map((o) => [o.id, o])) as Record<string, ObstacleDef>;

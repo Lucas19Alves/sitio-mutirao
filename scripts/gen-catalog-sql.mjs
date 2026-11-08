@@ -9,4 +9,6 @@ insert into game.catalog (id, data) values (1, $catalog$${json}$catalog$::jsonb)
 on conflict (id) do update set data = excluded.data;
 `;
 writeFileSync(new URL('../supabase/migrations/20261102000003_catalog.sql', import.meta.url), sql);
+// cópia pública (o mesmo conteúdo já vai no código do jogo): permite atualizar o banco sem colar o SQL
+writeFileSync(new URL('../public/catalog.json', import.meta.url), json);
 console.log(`catálogo do servidor: ${(json.length / 1024).toFixed(1)} KB`);

@@ -32,7 +32,7 @@ export async function act(a: Parameters<typeof store.act>[0], okText?: string) {
   return r;
 }
 
-const TOOL_ICON: Record<string, string> = { axe: 'wood', pickaxe: 'stone', sickle: 'wheat', shovel: 'clay' };
+const TOOL_ICON: Record<string, string> = { axe: 'wood', pickaxe: 'stone', sickle: 'wheat', shovel: 'clay', rod: 'fish' };
 const CAT_LABEL: Record<ItemCat, string> = { raw: 'Recursos', fruit: 'Frutas', crop: 'Cultivos', flower: 'Flores', product: 'Materiais', goods: 'Mercadorias' };
 
 export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: PanelId; onClose: () => void; me: Me; onExit: () => void; onLookChange: (l: Look) => void }) {
@@ -123,7 +123,7 @@ function SellPanel({ onClose, atMarket }: { onClose: () => void; atMarket?: bool
   }).sort((a, b) => b.perMin - a.perMin);
   const sell = async (id: string, q: number) => {
     const r = await act({ t: 'sell', i: id, q });
-    if (r.ok) { play('coin'); toast(`Vendido: ${q}× ${ITEM_BY_ID[id].name} por ${fmt(Number(r.g))} moedas.`, 'ok'); }
+    if (r.ok) { play('sell'); toast(`Vendido: ${q}× ${ITEM_BY_ID[id].name} por ${fmt(Number(r.g))} moedas.`, 'ok'); }
   };
   return (
     <Sheet title="Mercado" subtitle="O dinheiro vai para o caixa da fazenda" icon="ui_coins" onClose={onClose}>
@@ -183,9 +183,9 @@ function BagSection({ mode }: { mode: 'view' | 'deposit' | 'sell' }) {
   const sellAll = async () => {
     let g = 0;
     for (const k of ids) { const r = await act({ t: 'sell', i: k, q: bag[k], src: 'bag' }); if (r.ok) g += Number(r.g); }
-    if (g) { play('coin'); bus.emit('pose', 'sell'); toast(`Mochila vendida por ${fmt(g)} moedas.`, 'ok'); }
+    if (g) { play('sell'); bus.emit('pose', 'sell'); toast(`Mochila vendida por ${fmt(g)} moedas.`, 'ok'); }
   };
-  const deposit = async () => { const r = await act({ t: 'deposit' }); if (r.ok) { play('coin'); toast(`${r.q} itens guardados no celeiro.`, 'ok'); } };
+  const deposit = async () => { const r = await act({ t: 'deposit' }); if (r.ok) { play('deposit'); toast(`${r.q} itens guardados no celeiro.`, 'ok'); } };
   return (
     <section className="bag-sec" data-testid="bag-section">
       <div className="cap-row"><span>🎒 Mochila {used}/{cap}</span><Bar value={used} max={cap} tone={used >= cap ? 'chita' : 'ipe'} /></div>

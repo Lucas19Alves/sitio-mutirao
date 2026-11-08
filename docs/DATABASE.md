@@ -140,3 +140,12 @@ delete from auth.users where email ~ '^(ta|tb|coop_a|coop_b|vitrine)_[a-z0-9_]+@
 - **Ações alteradas:** `harvest` e `reap` dão o bônus do sino (`game.bell_bonus`).
 - **`farm_act` grava o mural** com `game.log_entry`. O delta agora traz `bags` (mochilas de todos), porque presentes mudam a mochila de outro membro.
 - **Catálogo:** nova chave `coop` (sino e feira).
+
+## v1.3 — expansão (migration `20261108000009_expansion.sql`)
+
+- **Conteúdo novo só no catálogo.** As regiões, os itens, as receitas, os prédios, os campos, as missões, os pets, a vara de pescar e o nível 40 entram em `game.catalog`; as funções já eram genéricas.
+- **`guard_look`** agora lê os itens de visual pagos (`f`, `v`) do catálogo.
+- **`public/catalog.json`** é uma cópia pública do catálogo, gerada por `npm run gen:catalog`. É o mesmo conteúdo que já vai no código do jogo. Para atualizar o banco sem colar o SQL:
+  1. faça o deploy;
+  2. `select net.http_get('https://sitio-mutirao.vercel.app/catalog.json')`;
+  3. grave o corpo da resposta em `game.catalog`.

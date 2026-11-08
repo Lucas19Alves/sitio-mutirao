@@ -109,37 +109,45 @@ export function itemModel(id: string): THREE.BufferGeometry {
   const g = k.build(); itemGeo.set(id, g); return g;
 }
 
-interface Drop { m: THREE.Mesh; t: number; from: THREE.Vector3; mid: THREE.Vector3; to: () => THREE.Vector3; dur: number; done?: () => void }
+interface Drop { m: THREE.Mesh; t: number; p: THREE.Vector3; v: THREE.Vector3; bounces: number; to: () => THREE.Vector3; phase: 'fly' | 'rest' | 'magnet'; rest: number; k: number; start: THREE.Vector3; done?: () => void; squash: number }
 export class Drops {
   private list: Drop[] = [];
   constructor(private scene: THREE.Scene) {}
-  /** Item salta do recurso, quica e é atraído até o destino (mochila do jogador). */
+  /** Item salta do recurso com gravidade, quica duas vezes no chão e é puxado para a mochila. */
   spawn(item: string, n: number, from: THREE.Vector3, to: () => THREE.Vector3, onEach?: () => void) {
     for (let i = 0; i < Math.min(n, 6); i++) {
       const m = new THREE.Mesh(itemModel(item), matVC); m.castShadow = true;
       m.position.copy(from); this.scene.add(m);
-      const a = Math.random() * Math.PI * 2;
-      const mid = from.clone().add(new THREE.Vector3(Math.cos(a) * 0.7, 0, Math.sin(a) * 0.7)); mid.y = 0.12;
-      this.list.push({ m, t: -i * 0.06, from: from.clone(), mid, to, dur: 0.95, done: i === 0 ? onEach : undefined });
+      const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 1.1;
+      this.list.push({ m, t: -i * 0.05, p: from.clone(), v: new THREE.Vector3(Math.cos(a) * sp, 3.6 + Math.random() * 1.4, Math.sin(a) * sp), bounces: 0, to, phase: 'fly', rest: 0.12 + i * 0.04, k: 0, start: new THREE.Vector3(), done: i === 0 ? onEach : undefined, squash: 0 });
     }
   }
   update(dt: number) {
     this.list = this.list.filter((d) => {
       d.t += dt;
       if (d.t < 0) return true;
-      const u = d.t / d.dur;
-      if (u < 0.42) { // salto até o chão
-        const k = u / 0.42;
-        d.m.position.lerpVectors(d.from, d.mid, k); d.m.position.y = d.from.y + (d.mid.y - d.from.y) * k + Math.sin(k * Math.PI) * 0.9;
-      } else if (u < 0.55) { d.m.position.y = d.mid.y + Math.sin(((u - 0.42) / 0.13) * Math.PI) * 0.12; }
-      else { // ímã até o jogador
-        const k = Math.min(1, (u - 0.55) / 0.45), e = k * k;
-        const to = d.to();
-        d.m.position.lerpVectors(d.mid, to, e); d.m.position.y += Math.sin(k * Math.PI) * 0.4;
-        d.m.scale.setScalar(1 - e * 0.6);
+      if (d.phase === 'fly') {
+        d.v.y -= 14 * dt;
+        d.p.addScaledVector(d.v, dt);
+        if (d.p.y <= 0.12) {
+          d.p.y = 0.12; d.bounces++; d.squash = 1;
+          if (d.bounces >= 3 || Math.abs(d.v.y) < 1.2) { d.phase = 'rest'; d.v.set(0, 0, 0); }
+          else { d.v.y = -d.v.y * 0.42; d.v.x *= 0.6; d.v.z *= 0.6; }
+        }
+      } else if (d.phase === 'rest') {
+        d.rest -= dt;
+        if (d.rest <= 0) { d.phase = 'magnet'; d.start.copy(d.p); d.k = 0; }
+      } else {
+        d.k = Math.min(1, d.k + dt * 2.6);
+        const e = d.k * d.k * (3 - 2 * d.k), to = d.to();
+        d.p.lerpVectors(d.start, to, e); d.p.y += Math.sin(d.k * Math.PI) * 0.6;
+        d.m.scale.setScalar(1 - e * 0.65);
+        if (d.k >= 1) { d.m.removeFromParent(); d.done?.(); return false; }
       }
-      d.m.rotation.y += dt * 8; d.m.rotation.x += dt * 3;
-      if (u >= 1) { d.m.removeFromParent(); d.done?.(); return false; }
+      d.m.position.copy(d.p);
+      if (d.squash > 0) { d.squash = Math.max(0, d.squash - dt * 6); const q = 1 - d.squash * 0.35; if (d.phase !== 'magnet') d.m.scale.set(1 + (1 - q) * 0.6, q, 1 + (1 - q) * 0.6); }
+      else if (d.phase !== 'magnet') d.m.scale.setScalar(1);
+      d.m.rotation.y += dt * (d.phase === 'rest' ? 2 : 9); d.m.rotation.x += dt * (d.phase === 'fly' ? 5 : 0);
       return true;
     });
   }

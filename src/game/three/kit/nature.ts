@@ -191,6 +191,59 @@ export function lily(): THREE.BufferGeometry {
 }
 
 /** Tipos de nó do mundo → [cheio, esgotado]. */
+// ---------------------------------------------------------------- v1.3: flora tropical e pesca
+/** Bananeira: pseudocaule, folhas largas arqueadas e cacho amarelo. */
+export function bananaTree(full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  k.cyl(0.1, 0.15, 1.3, '#7d9a4a', { p: [0, 0.65, 0], jitter: 0.1 }, 8);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    k.box(0.32, 0.02, 1.0, i % 2 ? '#5da443' : '#6fb04c', { p: [Math.sin(a) * 0.42, 1.35 - (i % 3) * 0.05, Math.cos(a) * 0.42], r: [0.55, a, 0], wind: 1 }, 0.01);
+  }
+  if (full) { for (let i = 0; i < 8; i++) k.capsule(0.03, 0.12, '#f6d84a', { p: [0.16 + (i % 2) * 0.05, 1.0 - Math.floor(i / 2) * 0.07, 0.08 * ((i % 3) - 1)], r: [0, 0, 0.6], wind: 0.3 }); k.cone(0.06, 0.18, '#7b2d4f', { p: [0.2, 0.68, 0], r: [Math.PI, 0, 0] }, 6); }
+  return k.build();
+}
+/** Cacaueiro: árvore baixa com frutos presos ao tronco. */
+export function cacaoTree(full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  trunk(k, 0.8, 0.13, BARK);
+  canopy(k, 21, 0, 1.15, 0.55, '#3f7d3a', 5, false);
+  if (full) for (let i = 0; i < 6; i++) { const a = i * 1.05; k.capsule(0.055, 0.1, i % 2 ? '#d8892f' : '#a0522d', { p: [Math.cos(a) * 0.15, 0.4 + (i % 3) * 0.17, Math.sin(a) * 0.15], r: [0, a, 0.2] }); }
+  return k.build();
+}
+/** Açaizeiro: tronco fino e alto, folhas em leque e cachos roxos. */
+export function acaiPalm(full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  k.cyl(0.06, 0.09, 2.2, '#8d7a5a', { p: [0, 1.1, 0], r: [0.05, 0, 0.04] }, 7);
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; k.box(0.12, 0.02, 1.1, '#4f8f3a', { p: [Math.sin(a) * 0.5 + 0.05, 2.2, Math.cos(a) * 0.5], r: [0.75, a, 0], wind: 1.2 }, 0.01); }
+  if (full) for (let i = 0; i < 10; i++) k.sphere(0.05, '#4a2c5e', { p: [0.12 + (i % 3) * 0.04, 1.85 - Math.floor(i / 3) * 0.06, (i % 2) * 0.06], wind: 0.4 }, 6, 5);
+  return k.build();
+}
+/** Touceira de bambu: colmos verdes com nós e folhinhas. */
+export function bambooClump(full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  const r = rng(77);
+  const n = full ? 9 : 4;
+  for (let i = 0; i < n; i++) {
+    const x = (r() - 0.5) * 0.6, z = (r() - 0.5) * 0.6, h = full ? 1.6 + r() * 0.9 : 0.25 + r() * 0.15;
+    k.cyl(0.05, 0.055, h, i % 2 ? '#8fbf4a' : '#a5c36a', { p: [x, h / 2, z], r: [(r() - 0.5) * 0.12, 0, (r() - 0.5) * 0.12], wind: full ? 0.5 : 0 }, 7);
+    for (let y = 0.4; y < h; y += 0.45) k.cyl(0.06, 0.06, 0.03, '#6f8f3a', { p: [x, y, z] }, 7);
+    if (full) for (let j = 0; j < 3; j++) k.box(0.05, 0.01, 0.28, '#6fb04c', { p: [x + 0.1, h - j * 0.3, z], r: [0.4, r() * 6, 0], wind: 1.4 }, 0.004);
+  }
+  return k.build();
+}
+/** Cardume: argolas na água, peixinhos e bolhas (some quando pescado). */
+export function fishSpot(deep: boolean, full: boolean): THREE.BufferGeometry {
+  const k = new Kit();
+  const c = deep ? '#3f7fae' : '#bfe7f6';
+  if (full) {
+    for (const [rr, y] of [[0.42, 0.02], [0.28, 0.025]] as const) k.torus(rr, 0.02, c, { p: [0, y, 0], r: [Math.PI / 2, 0, 0] });
+    for (let i = 0; i < (deep ? 2 : 3); i++) { const a = i * 2.1; k.capsule(deep ? 0.06 : 0.04, deep ? 0.18 : 0.1, deep ? '#5d8aa8' : '#9cc6e0', { p: [Math.cos(a) * 0.2, 0.04, Math.sin(a) * 0.2], r: [Math.PI / 2, 0, a] }); k.cone(0.04, 0.06, '#e57373', { p: [Math.cos(a) * 0.32, 0.12, Math.sin(a) * 0.32], r: [0, a, 0] }, 4); }
+    for (let i = 0; i < 4; i++) k.sphere(0.025, '#ffffff', { p: [(i - 1.5) * 0.08, 0.06 + i * 0.02, 0.1] }, 5, 4);
+  } else k.torus(0.2, 0.012, c, { p: [0, 0.02, 0], r: [Math.PI / 2, 0, 0] });
+  return k.build();
+}
+
 export function nodeGeometries(): Record<string, [THREE.BufferGeometry, THREE.BufferGeometry]> {
   return {
     tree_oak: [oak(3), stump()],
@@ -212,6 +265,12 @@ export function nodeGeometries(): Record<string, [THREE.BufferGeometry, THREE.Bu
     gold: [rock(0.55, '#8e877a', 7, '#f6c445'), rubble('#8e877a')],
     crystal: [crystal(), rubble('#7d7a86')],
     wildflower: [wildflowers(true), wildflowers(false)],
+    banana_tree: [bananaTree(true), bananaTree(false)],
+    cacao_tree: [cacaoTree(true), cacaoTree(false)],
+    acai_palm: [acaiPalm(true), acaiPalm(false)],
+    bamboo: [bambooClump(true), bambooClump(false)],
+    fish_spot: [fishSpot(false, true), fishSpot(false, false)],
+    deep_spot: [fishSpot(true, true), fishSpot(true, false)],
   };
 }
 
@@ -222,5 +281,6 @@ export function decorGeometries(): Record<string, THREE.BufferGeometry> {
     bush: bush(), berrybush: bush('#7b3fa0', 7), flowers: wildflowers(true), pebbles: pebbles(), fern: fern(),
     log: logPile(), mush: mushrooms(), stone: rock(0.22, '#adb2b7', 21), lily: lily(),
     tuft: tuft('#86c457', 0.3, 7, 11), tuft2: tuft('#9ad15f', 0.24, 6, 12),
+    palm: acaiPalm(false), banana: bananaTree(false), bamboo_d: bambooClump(true), cattail: tuft('#7d9a3a', 0.8, 10, 31, '#6d4c41'),
   };
 }

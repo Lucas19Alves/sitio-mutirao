@@ -1,6 +1,6 @@
 // Níveis, missões, contratos coletivos e parâmetros de economia.
 
-export const MAX_LEVEL = 30;
+export const MAX_LEVEL = 40;
 
 /** XP para ir do nível L ao L+1 (índice L-1). */
 export const LEVEL_XP: number[] = Array.from({ length: MAX_LEVEL - 1 }, (_, k) => Math.round(40 + 14 * Math.pow(k, 1.55)));
@@ -82,11 +82,17 @@ export const CONTRACTS: ContractDef[] = [
   c('joalheria_real', 'Casa Aurora', 'Encomenda Real', 24, { ring: 5, gold_ingot: 8, glass: 10 }, 8000, 2500, 12),
   c('feira_regional', 'Federação Rural', 'Grande Feira Regional', 26, { cart: 2, lamp: 8, perfume: 8, bread: 20 }, 11000, 3200, 14),
   c('festival', 'Toda a Região', 'Festival da Colheita', 28, { pumpkin_pie: 15, apple_pie: 15, lavender_honey: 10, music_box: 6 }, 15000, 4200, 16),
+  c('festa_junina', 'Comissão da Festa Junina', 'Quermesse da vila', 14, { tapioca: 10, rapadura: 12, pao_de_queijo: 6 }, 3200, 520, 6),
+  c('peixada', 'Seu Quim Pescador', 'Peixada no lago', 18, { fried_fish: 12, moqueca: 4 }, 2600, 420, 5),
+  c('cafe_da_manha', 'Pousada da Serra', 'Café da manhã da pousada', 21, { cafe_com_leite: 10, banana_cake: 6, pao_de_queijo: 10 }, 6800, 980, 8),
+  c('aniversario', 'Dona Benta Doceira', 'Aniversário na praça', 23, { brigadeiro: 15, chocolate: 10, yogurt: 8 }, 7600, 1100, 9),
+  c('feira_artesanato', 'Cacá Artesã', 'Feira de artesanato', 28, { bamboo_flute: 12, bamboo_lamp: 8, acai_bowl: 10 }, 9800, 1400, 10),
 ];
 
 export const ORDER_NPCS = [
   'Dona Cida', 'Seu Zé', 'Marina', 'Juca', 'Tia Nena', 'Pedro Pescador', 'Lia da Venda', 'Professor Abel',
   'Rosa Florista', 'Caio Carteiro', 'Vó Dita', 'Bia Ciclista', 'Mestre Otávio', 'Dona Filó',
+  'Seu Quim Pescador', 'Dona Benta Doceira', 'Tião Tropeiro', 'Iara do Lago', 'Padre Zezinho', 'Nina Barista', 'Zé do Engenho', 'Cacá Artesã',
 ];
 
 export const CONFIG = {

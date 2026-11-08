@@ -130,6 +130,34 @@ export const BUILDINGS: BuildingDef[] = [
   // Planalto
   b('jewelry', 'Joalheria', 'producer', 'planalto', 24, { x: 8, y: 38, w: 4, h: 3 },
     { coins: 5000, items: { brick: 40, gold_ingot: 6, glass: 20, metal_parts: 6 } }, 'Joias de ouro e cristal.', '', '#ffd54f', '#37474f'),
+
+  // Pastagem
+  b('chicken_coop', 'Galinheiro', 'producer', 'pasto', 10, { x: 6, y: 54, w: 4, h: 3 },
+    { coins: 700, items: { plank: 20, beam: 6, rope: 8 } }, 'As galinhas botam ovos com ração.', '', '#d84315', '#fff3e0'),
+  b('dairy', 'Estábulo', 'producer', 'pasto', 11, { x: 12, y: 54, w: 5, h: 4 },
+    { coins: 1100, items: { plank: 30, beam: 10, stone: 20 } }, 'As vacas dão leite com ração.', '', '#6d4c41', '#efebe9'),
+  b('creamery', 'Laticínio', 'producer', 'pasto', 13, { x: 20, y: 54, w: 4, h: 3 },
+    { coins: 1600, items: { brick: 20, clay_pot: 8, beam: 8 } }, 'Queijo, manteiga e iogurte.', '', '#42a5f5', '#e3f2fd'),
+  b('sugar_mill', 'Engenho', 'producer', 'pasto', 12, { x: 36, y: 54, w: 4, h: 3 },
+    { coins: 1300, items: { stone: 30, beam: 10, plank: 20 } }, 'Moenda de cana: açúcar e rapadura.', '', '#8d6e63', '#d7ccc8'),
+  b('flour_house', 'Casa de Farinha', 'producer', 'pasto', 11, { x: 42, y: 54, w: 4, h: 3 },
+    { coins: 1000, items: { plank: 24, clay_pot: 4, stone: 15 } }, 'Farinha de mandioca e tapioca.', '', '#a1887f', '#fbe9e7'),
+
+  // Lago das Garças
+  b('fishery', 'Peixaria', 'producer', 'lago', 14, { x: 64, y: 40, w: 4, h: 3 },
+    { coins: 1800, items: { plank: 30, rope: 15, brick: 15 } }, 'Peixe frito, defumado e moqueca.', '', '#0277bd', '#e1f5fe'),
+
+  // Cafezal da Serra
+  b('roastery', 'Torrefação', 'producer', 'cafezal', 19, { x: 66, y: 4, w: 4, h: 3 },
+    { coins: 3200, items: { brick: 30, metal_parts: 6, beam: 15 } }, 'Café torrado e café com leite.', '', '#4e342e', '#d7ccc8'),
+  b('confectionery', 'Confeitaria', 'producer', 'cafezal', 20, { x: 74, y: 4, w: 4, h: 3 },
+    { coins: 3600, items: { brick: 30, glass: 15, cloth: 8 } }, 'Chocolate, brigadeiro e bolo de banana.', '', '#f06292', '#fce4ec'),
+
+  // Mata da Cachoeira
+  b('bamboo_shop', 'Ateliê de Bambu', 'producer', 'mata', 26, { x: 56, y: 54, w: 4, h: 3 },
+    { coins: 6000, items: { beam: 30, cloth: 10, metal_parts: 6 } }, 'Flautas e luminárias de bambu.', '', '#7cb342', '#f1f8e9'),
+  b('acai_bar', 'Quiosque de Açaí', 'producer', 'mata', 27, { x: 64, y: 54, w: 4, h: 3 },
+    { coins: 6500, items: { brick: 30, glass: 20, metal_parts: 8 } }, 'Tigelas de açaí com banana.', '', '#6a1b9a', '#f3e5f5'),
 ];
 
 export interface RegionDef {
@@ -151,6 +179,10 @@ export const REGIONS: RegionDef[] = [
   { id: 'colinas', name: 'Colinas', desc: 'Rochedos, carvão, cobre e ferro. Fundição e ferraria.', rect: { x: 2, y: 2, w: 32, h: 16 }, level: 12, cost: { coins: 1800, items: { brick: 40, beam: 20, rope: 20 } }, ground: '#a7b26b' },
   { id: 'vale', name: 'Vale das Flores', desc: 'Pétalas, rosas, tulipas e lavanda. Apiário e floricultura.', rect: { x: 34, y: 2, w: 28, h: 16 }, level: 17, cost: { coins: 3500, items: { brick: 30, glass: 20, cloth: 10 } }, ground: '#b5d77a' },
   { id: 'planalto', name: 'Planalto Industrial', desc: 'Ouro e cristais. Joalheria.', rect: { x: 2, y: 36, w: 20, h: 14 }, level: 23, cost: { coins: 7000, items: { metal_parts: 30, brick: 40, beam: 20 } }, needs: 'great_workshop', ground: '#b9a77a' },
+  { id: 'pasto', name: 'Pastagem', desc: 'Galinhas, vacas, cana e mandioca. Laticínio, engenho e casa de farinha.', rect: { x: 2, y: 50, w: 48, h: 28 }, level: 10, cost: { coins: 1200, items: { plank: 40, rope: 20, beam: 10 } }, ground: '#9fd06a' },
+  { id: 'lago', name: 'Lago das Garças', desc: 'Pesca, junco e areia. Peixaria.', rect: { x: 62, y: 24, w: 36, h: 26 }, level: 13, cost: { coins: 2200, items: { brick: 25, beam: 15, rope: 20 } }, ground: '#94c973' },
+  { id: 'cafezal', name: 'Cafezal da Serra', desc: 'Café, bananeiras e cacau. Torrefação e confeitaria.', rect: { x: 62, y: 2, w: 36, h: 22 }, level: 18, cost: { coins: 4000, items: { brick: 40, glass: 15, beam: 20 } }, ground: '#8fb85c' },
+  { id: 'mata', name: 'Mata da Cachoeira', desc: 'Bambu, açaí e madeira de lei. Ateliê de bambu e quiosque de açaí.', rect: { x: 50, y: 50, w: 48, h: 28 }, level: 25, cost: { coins: 9000, items: { metal_parts: 20, beam: 40, cloth: 15 } }, ground: '#5f9a48' },
 ];
 
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map((x) => [x.id, x])) as Record<string, BuildingDef>;

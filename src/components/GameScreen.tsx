@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { store } from '../game/state/store.ts';
 import { realtime } from '../game/multiplayer/realtime.ts';
 import { bus, type PanelId } from '../game/bus.ts';
-import { sound } from '../game/audio.ts';
+import { sound, play } from '../game/audio.ts';
 import { music } from '../game/music.ts';
 import { iconUrl } from '../game/art/icons.ts';
 
@@ -17,6 +17,11 @@ const TIPS = [
   'A fazenda continua salva quando você sai. Volte quando quiser.',
 ];
 import { Hud } from './Hud.tsx';
+import { PermissionGate, needsPermissions, notify } from './Permissions.tsx';
+import { voice } from '../game/multiplayer/voice.ts';
+import { PINGS } from '../data/catalog.ts';
+import { logText } from './panels/Coop.tsx';
+import type { LogEntry } from '../game/state/store.ts';
 import { Panels } from './panels/Panels.tsx';
 import type { Me } from '../App.tsx';
 import type { Look } from '../game/art/characters.ts';
@@ -32,7 +37,19 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
   const ctxRef = useRef(false), panelRef = useRef<PanelId | null>(null), zoneRef = useRef(''), dismissed = useRef('');
   ctxRef.current = ctx; panelRef.current = panel;
   useEffect(() => { bus.emit('ctxpanel', ctx && !!panel); }, [ctx, panel]);
+  const hadPanel = useRef(false);
+  useEffect(() => { const on = !!panel; if (on !== hadPanel.current) play(on ? 'open' : 'close'); hadPanel.current = on; }, [panel]);
   const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
+  // ao abrir o jogo: tela de permissões (microfone, notificações, som, armazenamento)
+  const [perm, setPerm] = useState<boolean | null>(null);
+  useEffect(() => { if (phase === 'ready' && perm === null) void needsPermissions().then((n) => { setPerm(n); if (!n) void voice.join(me.id); }); }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const offs = [
+      bus.on('net:ping', (p: { k: string; name: string }) => { const d = PINGS.find((x) => x.k === p.k); notify(`${d?.icon ?? '📍'} ${p.name}`, d?.text ?? 'Vem cá!'); }),
+      bus.on('feed', (list: LogEntry[]) => { const e = list.find((x) => x.u !== me.id); if (e) { const t = logText(e); notify('Sítio Mutirão', `${t.icon} ${t.text}`); } }),
+    ];
+    return () => { offs.forEach((o) => o()); voice.leave(); };
+  }, [me.id]);
 
   useEffect(() => {
     let alive = true;
@@ -107,6 +124,7 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
           </div>
         </div>
       )}
+      {phase === 'ready' && perm && <PermissionGate onDone={() => { setPerm(false); void voice.join(me.id); }} />}
       {phase === 'ready' && (
         <>
           <Hud me={me} onOpen={(p) => { setCtx(false); setPanel(p); }} panelOpen={!!panel && !ctx} panel={panel} />

@@ -163,3 +163,65 @@ O jogo é uma fazendinha cooperativa: estoque, obras, clientes, campos e metas s
 - Tocar num cliente leva até o balcão.
 - Missões: botão "Receber todas as prontas" (útil para fazendas antigas que já cumpriram etapas).
 - Campos ainda fechados aparecem só com cerca e placa, sem canteiros soltos.
+
+## Expansão (v1.3)
+
+O mapa cresceu de 64×52 para 100×80 tiles, com 11 regiões. Os IDs dos recursos das 7 regiões antigas não mudaram.
+
+| Região | Nível | Obstáculo (ferramenta) | Conteúdo |
+|---|---|---|---|
+| Pastagem | 10 | porteira emperrada (machado 2), depois das pontes | Galinheiro (ovo), Estábulo (leite), Laticínio (queijo, manteiga, iogurte), Engenho (açúcar, rapadura), Casa de Farinha (farinha de mandioca, tapioca); campos de Aveia, Mandioca e Canavial |
+| Lago das Garças | 13 | galhada na trilha (foice 2) | lago com pesca (lambari com vara 1, tilápia com vara 2), Peixaria (peixe frito, defumado, moqueca) |
+| Cafezal da Serra | 18 | barranco da serra (pá 2) | bananeiras, cacaueiros, campo de Café, Torrefação (café torrado, café com leite), Confeitaria (chocolate, brigadeiro, bolo de banana) |
+| Mata da Cachoeira | 25 | mata fechada (machado 4) | bambu, açaizeiros, madeira de lei, cristal; Ateliê de Bambu (flauta, luminária), Quiosque de Açaí |
+
+Outras novidades de conteúdo:
+
+- **Ferramenta nova:** Vara de Pescar, 3 níveis.
+- **Nível máximo:** passou de 30 para 40.
+- **Campanha:** 63 missões principais. As 23 novas formam ramos ligados aos antigos (pontes → pastagem; colinas → pesca; vale → cafezal; planalto + confeitaria → mata). A última é a "Lenda do Mutirão", no nível 40.
+- **Contratos novos:** Festa Junina, Peixada, Café da manhã da pousada, Aniversário na praça e Feira de artesanato.
+- **Ajudantes novos:** Pescador e Vaqueira.
+- **Pets novos:** Cabrita Mel, Capivara Zen e Louro José.
+- **Clientes novos:** 8 nomes.
+
+## Sensação de jogo (v1.3)
+
+- **Colisão:**
+  - árvores, pedras, arbustos e troncos da decoração bloqueiam a passagem, e a rota por toque desvia deles;
+  - os campos têm cerca de verdade, com entrada pela porteira;
+  - esbarrar em colegas, clientes e ajudantes empurra de leve.
+- **Itens coletados:** saltam com gravidade, quicam (achatando no impacto) e são puxados para a mochila.
+- **Som:**
+  - sintetizador com compressor e reverb curto;
+  - passos por piso (grama, terra, madeira das pontes, água, terra arada);
+  - golpes com timbre de cada ferramenta e respingo na pesca;
+  - sino com bronze inarmônico;
+  - sons próprios para venda, depósito, presente, missão, desbloqueio e abrir ou fechar painel.
+- **Dopamina:**
+  - cada coleta seguida (até 3,2 s) sobe uma nota na escala pentatônica;
+  - a cada 5 aparece "Combo xN!" com confete e um selo na tela;
+  - quando a missão principal fica pronta, o jogo toca um som de "pronto" e mostra um aviso;
+  - receber missão tem fanfarra própria.
+
+## Personagem (v1.3)
+
+- **Rosto:** 5 olhos e 6 detalhes (sardas, bochechas, bigode, barba, cavanhaque).
+- **Cabelo:** 11 estilos, incluindo coque, moicano, longo solto, franja e maria-chiquinha. 12 cores.
+- **Roupa:** 7 estilos (vestido, moletom e colete são novos), pernas em calça, bermuda ou saia, e 14 cores.
+- **Extras:** 9 chapéus (vaqueiro, boina, coroa de flores) e 8 acessórios (brincos, cachecol, flor no cabelo).
+- **Tons de pele:** 8.
+- **Editor:** separado em abas (Corpo, Rosto, Cabelo, Roupa, Extras).
+- **Itens pagos novos:** chapéu de vaqueiro, coroa de flores, cachecol, flor no cabelo e moletom.
+
+## Voz e permissões (v1.3)
+
+- **Ao abrir o jogo**, uma tela pede de uma vez microfone, notificações, som e armazenamento persistente. Ela aparece enquanto o microfone ou as notificações ainda não tiverem resposta.
+- **Voz da fazenda (WebRTC em malha):**
+  - a combinação da conexão vai pelo canal Realtime da fazenda;
+  - o volume é por proximidade (cheio até 6 tiles, cai até 12% a 24 tiles) ou "Todos";
+  - o nome de quem está falando ganha 🔊;
+  - há um botão 🎙️ para silenciar;
+  - sem microfone, o jogador entra só ouvindo.
+- **Notificações do sistema** (com o jogo em segundo plano): um colega chamou você ou conquistou algo.
+- **Limite conhecido:** só há servidores STUN, sem TURN. Em algumas redes muito fechadas (alguns 4G corporativos) a conexão de voz pode não fechar.

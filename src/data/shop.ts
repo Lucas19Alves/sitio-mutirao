@@ -26,6 +26,9 @@ export const PETS: PetDef[] = [
   { id: 'duck', name: 'Quaquá', species: 'Pato', rarity: 'incomum', level: 12, price: { coins: 1500 }, ability: 'xp', values: [0.06, 0.09, 0.12, 0.15, 0.18], persona: 'Puxa conversa com todo cliente.', color: '#fbfaf4', color2: '#f2a62c' },
   { id: 'hen', name: 'Dona Pintada', species: 'Galinha especial', rarity: 'raro', level: 10, price: { cr: 12 }, ability: 'harvest', values: [0.12, 0.16, 0.2, 0.24, 0.28], persona: 'Cisca a horta e acha o que sobrou.', color: '#7a4a2a', color2: '#f6f1e4' },
   { id: 'fox', name: 'Ruivo', species: 'Raposa', rarity: 'raro', level: 15, price: { cr: 20 }, ability: 'find', values: [0.04, 0.05, 0.06, 0.08, 0.1], persona: 'Some e volta com algo brilhante.', color: '#e07a35', color2: '#fbfaf4' },
+  { id: 'goat', name: 'Cabrita Mel', species: 'Cabra', rarity: 'incomum', level: 11, price: { coins: 1300 }, ability: 'harvest', values: [0.1, 0.13, 0.16, 0.19, 0.22], persona: 'Pula a cerca para ajudar na colheita.', color: '#f4efe6', color2: '#8d6e63' },
+  { id: 'capybara', name: 'Capivara Zen', species: 'Capivara', rarity: 'raro', level: 14, price: { cr: 25 }, ability: 'xp', values: [0.08, 0.11, 0.14, 0.17, 0.2], persona: 'Tranquila. Todo cliente sai mais feliz.', color: '#a0673a', color2: '#7a4b2a' },
+  { id: 'parrot', name: 'Louro José', species: 'Papagaio', rarity: 'raro', level: 16, price: { cr: 18 }, ability: 'coins', values: [0.06, 0.08, 0.1, 0.12, 0.14], persona: 'Chama a freguesia no grito.', color: '#43a047', color2: '#fbc02d' },
   { id: 'owl', name: 'Sábia', species: 'Coruja', rarity: 'épico', level: 20, price: { cr: 35 }, ability: 'gather', values: [0.16, 0.2, 0.24, 0.28, 0.32], persona: 'Do alto, aponta os melhores veios.', color: '#8a6a4a', color2: '#e9dcc4' },
 ];
 export const PET_BY_ID = Object.fromEntries(PETS.map((p) => [p.id, p])) as Record<string, PetDef>;
@@ -39,7 +42,7 @@ export const PERKS: PerkDef[] = [
 export const PERK_BY_ID = Object.fromEntries(PERKS.map((p) => [p.id, p])) as Record<string, PerkDef>;
 
 /** Cosméticos que precisam ser comprados (o resto do editor é livre). */
-export interface CosmeticDef { id: string; f: 'hat' | 'acc' | 'shoes' | 'hair'; v: number; name: string; price: { coins?: number; cr?: number }; level: number }
+export interface CosmeticDef { id: string; f: 'hat' | 'acc' | 'shoes' | 'hair' | 'shirt'; v: number; name: string; price: { coins?: number; cr?: number }; level: number }
 export const COSMETICS: CosmeticDef[] = [
   { id: 'hat4', f: 'hat', v: 4, name: 'Chapéu com flor', price: { cr: 3 }, level: 3 },
   { id: 'hat5', f: 'hat', v: 5, name: 'Gorro', price: { coins: 300 }, level: 4 },
@@ -49,6 +52,11 @@ export const COSMETICS: CosmeticDef[] = [
   { id: 'shoes3', f: 'shoes', v: 3, name: 'Botas vermelhas', price: { coins: 250 }, level: 5 },
   { id: 'shoes4', f: 'shoes', v: 4, name: 'Tênis azul', price: { coins: 400 }, level: 8 },
   { id: 'shoes5', f: 'shoes', v: 5, name: 'Botas douradas', price: { cr: 6 }, level: 12 },
+  { id: 'hat6', f: 'hat', v: 6, name: 'Chapéu de vaqueiro', price: { coins: 500 }, level: 9 },
+  { id: 'hat8', f: 'hat', v: 8, name: 'Coroa de flores', price: { cr: 5 }, level: 15 },
+  { id: 'acc6', f: 'acc', v: 6, name: 'Cachecol', price: { coins: 350 }, level: 7 },
+  { id: 'acc7', f: 'acc', v: 7, name: 'Flor no cabelo', price: { cr: 3 }, level: 10 },
+  { id: 'shirt5', f: 'shirt', v: 5, name: 'Moletom', price: { coins: 600 }, level: 12 },
 ];
 export const COSMETIC_OF = (f: string, v: number) => COSMETICS.find((c) => c.f === f && c.v === v);
 

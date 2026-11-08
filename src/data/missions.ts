@@ -61,6 +61,33 @@ export const MAIN: MainMission[] = [
   m('m38', ['m37'], 'O barco abandonado', 'Recupere o barco e atravesse a passagem alagada do planalto.', { k: 'region', r: 'planalto' }, 900, 220, 6, 'Planalto, ouro e cristais'),
   m('m39', ['m38'], 'Joalheria', 'Construa a Joalheria no planalto.', { k: 'built', b: 'jewelry', lv: 1 }, 1000, 250, 5, 'Joias'),
   m('m40', ['m39'], 'Fazenda completa', 'Leve a fazenda ao nível 30.', { k: 'level', n: 30 }, 2000, 0, 10, 'Título de Fazenda Mestre'),
+  // v1.3 — Pastagem
+  m('m41', ['m25'], 'A porteira da pastagem', 'Atravesse as pontes e solte a porteira emperrada da Pastagem.', { k: 'region', r: 'pasto' }, 350, 90, 4, 'Pastagem, galinheiro e estábulo'),
+  m('m42', ['m41'], 'Campo de Aveia', 'Abra o Campo de Aveia: é a comida dos bichos.', { k: 'field', f: 'oat', lv: 1 }, 250, 70, 0, 'Ração no Moinho'),
+  m('m43', ['m42'], 'Cocoricó!', 'Construa o Galinheiro.', { k: 'built', b: 'chicken_coop', lv: 1 }, 300, 80, 2, 'Ovos caipiras'),
+  m('m44', ['m43'], 'Ovos fresquinhos', 'Junte 12 ovos no galinheiro.', { k: 'stat', key: 'c:egg', n: 12 }, 260, 70, 0, 'Estábulo'),
+  m('m45', ['m43'], 'Muuu!', 'Construa o Estábulo para as vacas.', { k: 'built', b: 'dairy', lv: 1 }, 380, 90, 2, 'Leite'),
+  m('m46', ['m45'], 'Roça de Mandioca', 'Abra a Roça de Mandioca.', { k: 'field', f: 'cassava', lv: 1 }, 300, 80, 0, 'Casa de Farinha'),
+  m('m47', ['m46'], 'Casa de Farinha', 'Construa a Casa de Farinha.', { k: 'built', b: 'flour_house', lv: 1 }, 400, 100, 2, 'Farinha e tapioca'),
+  m('m48', ['m45'], 'Do leite ao queijo', 'Construa o Laticínio.', { k: 'built', b: 'creamery', lv: 1 }, 500, 120, 3, 'Queijo, manteiga e iogurte'),
+  m('m49', ['m47', 'm48'], 'Pão de queijo da vó', 'Asse 6 pães de queijo na Padaria.', { k: 'stat', key: 'c:pao_de_queijo', n: 6 }, 600, 150, 3, 'Clientes famintos'),
+  m('m50', ['m46'], 'Canavial', 'Abra o Canavial e construa o Engenho.', { k: 'built', b: 'sugar_mill', lv: 1 }, 450, 110, 2, 'Açúcar e rapadura'),
+  // Lago das Garças
+  m('m51', ['m30'], 'Vara de pescar', 'Fabrique a Vara de Bambu Simples no Galpão.', { k: 'tool', tool: 'rod', tier: 1 }, 300, 80, 0, 'Pesca'),
+  m('m52', ['m51'], 'A trilha do lago', 'Ceife a galhada e abra o Lago das Garças.', { k: 'region', r: 'lago' }, 500, 130, 4, 'Lago, peixes e peixaria'),
+  m('m53', ['m52'], 'Primeira fisgada', 'Pesque 15 lambaris no lago.', { k: 'stat', key: 'h:fish', n: 15 }, 350, 90, 2, 'Peixaria'),
+  m('m54', ['m53'], 'Peixaria', 'Construa a Peixaria na beira do lago.', { k: 'built', b: 'fishery', lv: 1 }, 600, 150, 3, 'Peixe frito e moqueca'),
+  // Cafezal da Serra
+  m('m55', ['m34'], 'O barranco da serra', 'Cave o barranco e abra o Cafezal da Serra.', { k: 'region', r: 'cafezal' }, 900, 220, 5, 'Café, banana e cacau'),
+  m('m56', ['m55'], 'Cafezal', 'Abra o campo de café.', { k: 'field', f: 'coffee', lv: 1 }, 700, 170, 0, 'Torrefação'),
+  m('m57', ['m56', 'm48'], 'Cheirinho de café', 'Construa a Torrefação.', { k: 'built', b: 'roastery', lv: 1 }, 900, 220, 3, 'Café com leite'),
+  m('m58', ['m57', 'm50'], 'Doces da serra', 'Construa a Confeitaria.', { k: 'built', b: 'confectionery', lv: 1 }, 1000, 240, 4, 'Brigadeiro e bolo de banana'),
+  m('m59', ['m58'], 'Festa de aniversário', 'Faça 10 brigadeiros.', { k: 'stat', key: 'c:brigadeiro', n: 10 }, 1200, 280, 4, 'Mata da Cachoeira'),
+  // Mata da Cachoeira
+  m('m60', ['m59', 'm38'], 'Rumo à cachoeira', 'Abra a trilha da Mata da Cachoeira.', { k: 'region', r: 'mata' }, 1600, 380, 6, 'Bambu e açaí'),
+  m('m61', ['m60'], 'Ateliê de Bambu', 'Construa o Ateliê de Bambu.', { k: 'built', b: 'bamboo_shop', lv: 1 }, 1500, 350, 4, 'Flautas e luminárias'),
+  m('m62', ['m61'], 'Açaí na tigela', 'Construa o Quiosque de Açaí.', { k: 'built', b: 'acai_bar', lv: 1 }, 1700, 380, 5, 'Tigelas de açaí'),
+  m('m63', ['m62', 'm40'], 'Lenda do Mutirão', 'Leve a fazenda ao nível 40.', { k: 'level', n: 40 }, 5000, 0, 20, 'Título de Lenda do Mutirão'),
 ];
 
 export const MAIN_BY_ID = Object.fromEntries(MAIN.map((x) => [x.id, x])) as Record<string, MainMission>;

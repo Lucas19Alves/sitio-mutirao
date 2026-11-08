@@ -94,8 +94,10 @@ export function obstacleSite(): THREE.BufferGeometry {
 }
 
 /** Pets: corpo arredondado simples por espécie, com cores do catálogo. */
-export function petModel(species: string, c1: string, c2: string): THREE.BufferGeometry {
+export function petModel(id: string, c1: string, c2: string): THREE.BufferGeometry {
   const k = new Kit();
+  // espécies novas reaproveitam corpos parecidos e ganham detalhes próprios
+  const species = id === 'goat' || id === 'capybara' ? 'dog' : id === 'parrot' ? 'duck' : id;
   const eye = (x: number, y: number, z: number) => { for (const s of [-1, 1]) { k.sphere(0.03, '#2b1d14', { p: [x + s * 0.06, y, z] }, 6, 5); k.sphere(0.01, '#ffffff', { p: [x + s * 0.06 + 0.01, y + 0.01, z + 0.025] }, 4, 3); } };
   switch (species) {
     case 'dog': case 'cat': case 'fox': {
@@ -143,6 +145,9 @@ export function petModel(species: string, c1: string, c2: string): THREE.BufferG
       break;
     }
   }
+  if (id === 'goat') { for (const sd of [-1, 1]) k.cone(0.025, 0.14, '#d7ccc8', { p: [sd * 0.06, 0.55, 0.16], r: [-0.5, 0, sd * 0.3] }, 5); k.cone(0.03, 0.08, c2, { p: [0, 0.27, 0.33], r: [Math.PI, 0, 0] }, 5); }
+  if (id === 'capybara') k.box(0.16, 0.1, 0.1, tint(c1, -0.15), { p: [0, 0.36, 0.32] }, 0.04);
+  if (id === 'parrot') { k.cone(0.07, 0.25, '#e53935', { p: [0, 0.25, -0.27], r: [-1.2, 0, 0] }, 5); k.sphere(0.06, c2, { p: [0, 0.45, 0.12] }, 6, 5); }
   return k.build();
 }
 

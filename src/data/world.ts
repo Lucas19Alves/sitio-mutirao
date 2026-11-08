@@ -5,12 +5,16 @@ import { NODE_BY_ID } from './production.ts';
 import { FIELDS } from './fields.ts';
 
 export const TILE = 32;
-export const MAP_W = 64;
-export const MAP_H = 52;
+export const MAP_W = 100;
+export const MAP_H = 80;
 
 /** Rio corre na faixa y 44..46 de ponta a ponta, com duas pontes. */
 export const RIVER = { y0: 44, y1: 46 };
-export const BRIDGES = [{ x0: 30, x1: 31 }, { x0: 52, x1: 53 }];
+export const BRIDGES = [{ x0: 30, x1: 31 }, { x0: 52, x1: 53 }, { x0: 80, x1: 81 }];
+
+/** Lago das Garças (elipse, em tiles). */
+export const LAKE = { cx: 80, cy: 33, rx: 9, ry: 5.5 };
+export const inLake = (x: number, y: number) => ((x + 0.5 - LAKE.cx) / LAKE.rx) ** 2 + ((y + 0.5 - LAKE.cy) / LAKE.ry) ** 2 <= 1;
 
 /** Caminhos de terra (polilinhas em tiles, largura 1 tile). */
 export const PATHS: [number, number][][] = [
@@ -28,6 +32,17 @@ export const PATHS: [number, number][][] = [
   [[39, 9], [48, 9]],
   [[44, 30], [56, 30]],
   [[27, 40], [52, 40]],
+  // v1.3
+  [[62, 24], [96, 24]],
+  [[48, 9], [80, 9]],
+  [[80, 9], [80, 24]],
+  [[56, 30], [68, 30]],
+  [[68, 24], [68, 41]],
+  [[80, 41], [80, 62]],
+  [[30, 50], [30, 64]],
+  [[4, 64], [60, 64]],
+  [[52, 50], [52, 64]],
+  [[60, 62], [94, 62]],
 ];
 
 
@@ -42,7 +57,12 @@ const NODE_PLAN: Record<string, [string, number][]> = {
   colinas: [['rock_big', 9], ['rock_small', 5], ['coal', 7], ['copper', 7], ['iron', 7]],
   vale: [['wildflower', 14], ['tree_oak', 5], ['rock_small', 3], ['grass', 4]],
   planalto: [['gold', 6], ['crystal', 5], ['coal', 5], ['rock_big', 4]],
+  pasto: [['grass', 12], ['tree_oak', 7], ['wildflower', 6], ['rock_small', 5]],
+  lago: [['fish_spot', 9], ['deep_spot', 5], ['reeds', 8], ['tree_oak', 5], ['sand', 5]],
+  cafezal: [['banana_tree', 8], ['cacao_tree', 7], ['tree_oak', 5], ['rock_small', 5], ['herb_bush', 4]],
+  mata: [['tree_big', 8], ['acai_palm', 8], ['bamboo', 9], ['mushroom', 5], ['crystal', 3], ['rock_big', 4]],
 };
+const WATER_NODES = new Set(['fish_spot', 'deep_spot']);
 
 export interface WorldNode { id: string; t: string; r: string; x: number; y: number }
 
@@ -56,6 +76,7 @@ function mulberry32(seed: number) {
 }
 
 export function isWater(x: number, y: number) {
+  if (inLake(x, y)) return true;
   if (y < RIVER.y0 || y > RIVER.y1) return false;
   return !BRIDGES.some((b) => x >= b.x0 && x <= b.x1);
 }
@@ -119,6 +140,9 @@ function buildWorld(): WorldNode[] {
         // argila/areia/junco só nas margens do rio
         const nearRiver = y >= RIVER.y0 - 3 && y <= RIVER.y1 + 3;
         if ((type === 'clay' || type === 'sand' || type === 'reeds') !== nearRiver && reg.id === 'rio') continue;
+        if (inLake(x, y)) continue;
+        const shore = inLake(x + 1, y) || inLake(x - 1, y) || inLake(x, y + 1) || inLake(x, y - 1);
+        if (WATER_NODES.has(type) !== shore && (WATER_NODES.has(type) || ((type === 'reeds' || type === 'sand') && reg.id === 'lago'))) continue;
         if (blocked.has(`${x},${y}`)) continue;
         // espaçamento: sólidos precisam de 1 tile livre ao redor para não fechar caminhos
         const gap = def.solid ? 1 : 0;

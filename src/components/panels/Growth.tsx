@@ -43,7 +43,7 @@ function MainCard({ m, first, onClose }: { m: MainMission; first: boolean; onClo
   const t = goalTarget(m.goal);
   const claim = async () => {
     const r = await act({ t: 'main', m: m.id });
-    if (r.ok) { play('level'); bus.emit('cheer'); toast(`Missão concluída: ${m.title}!${m.r.cr ? ` +${m.r.cr} 💎` : ''}`, 'ok'); }
+    if (r.ok) { play('mission'); bus.emit('cheer'); toast(`Missão concluída: ${m.title}!${m.r.cr ? ` +${m.r.cr} 💎` : ''}`, 'ok'); }
   };
   return (
     <li className={`mission panel${first ? ' main' : ''}${done ? ' done' : ''}`} data-testid={`main-${m.id}`}>
@@ -278,7 +278,7 @@ export function ShopPanel({ onClose }: { onClose: () => void }) {
   const lv = level();
   const cr = s.crystals();
   const pets = s.pets();
-  const buyPet = async (id: string) => { const r = await act({ t: 'pet', p: id }); if (r.ok) { play('level'); bus.emit('cheer'); toast('Novo amigo na fazenda!', 'ok'); } };
+  const buyPet = async (id: string) => { const r = await act({ t: 'pet', p: id }); if (r.ok) { play('pet'); play('sparkle'); bus.emit('cheer'); toast('Novo amigo na fazenda!', 'ok'); } };
   const perk = async (id: string) => { const r = await act({ t: 'perk', p: id }); if (r.ok) { play('build'); toast('Melhoria comprada!', 'ok'); } };
   const cosm = async (id: string) => { const r = await act({ t: 'cosm', c: id }); if (r.ok) { play('coin'); toast('Item de visual liberado! Troque no ateliê da Casa da Fazenda.', 'ok'); } };
   const priceOk = (p: { coins?: number; cr?: number }) => s.farm!.coins >= (p.coins ?? 0) && cr >= (p.cr ?? 0);

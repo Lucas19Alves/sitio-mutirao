@@ -1,6 +1,6 @@
 // Cultivos, recursos naturais, ferramentas e receitas.
 
-export type ToolId = 'axe' | 'pickaxe' | 'sickle' | 'shovel';
+export type ToolId = 'axe' | 'pickaxe' | 'sickle' | 'shovel' | 'rod';
 export type Cost = { coins?: number; items?: Record<string, number> };
 
 export interface CropDef {
@@ -29,6 +29,10 @@ export const CROPS: CropDef[] = [
   { id: 'pumpkin', level: 19, seed: 14, time: 240, yield: 2, xp: 14, color: '#ef6c00' },
   { id: 'tulip', level: 19, seed: 12, time: 170, yield: 3, xp: 11, region: 'vale', color: '#ff7043' },
   { id: 'lavender', level: 21, seed: 11, time: 160, yield: 3, xp: 11, tool: 'sickle', region: 'vale', color: '#9575cd' },
+  { id: 'oat', level: 10, seed: 3, time: 70, yield: 4, xp: 5, color: '#d9c38a' },
+  { id: 'cassava', level: 11, seed: 4, time: 110, yield: 4, xp: 6, color: '#7cb342' },
+  { id: 'sugarcane', level: 12, seed: 5, time: 130, yield: 4, xp: 7, tool: 'sickle', color: '#9ccc65' },
+  { id: 'coffee', level: 18, seed: 9, time: 200, yield: 4, xp: 12, color: '#c0392b' },
 ];
 
 export interface NodeDef {
@@ -65,6 +69,12 @@ export const NODES: NodeDef[] = [
   { id: 'wildflower', name: 'Flores do Campo', item: 'petals', qty: 3, tier: 0, hits: 1, respawn: 80, xp: 3, solid: false },
   { id: 'gold', name: 'Veio de Ouro', item: 'gold_ore', qty: 2, tool: 'pickaxe', tier: 3, hits: 5, respawn: 180, xp: 8, solid: true },
   { id: 'crystal', name: 'Geodo de Cristal', item: 'crystal', qty: 1, tool: 'pickaxe', tier: 3, hits: 6, respawn: 240, xp: 10, solid: true },
+  { id: 'fish_spot', name: 'Cardume', item: 'fish', qty: 2, tool: 'rod', tier: 1, hits: 2, respawn: 70, xp: 4, solid: false },
+  { id: 'deep_spot', name: 'Poço fundo', item: 'big_fish', qty: 1, tool: 'rod', tier: 2, hits: 3, respawn: 120, xp: 7, solid: false },
+  { id: 'banana_tree', name: 'Bananeira', item: 'banana', qty: 3, tier: 0, hits: 1, respawn: 100, xp: 3, solid: true },
+  { id: 'cacao_tree', name: 'Cacaueiro', item: 'cocoa', qty: 3, tier: 0, hits: 1, respawn: 120, xp: 3, solid: true },
+  { id: 'acai_palm', name: 'Açaizeiro', item: 'acai', qty: 3, tier: 0, hits: 1, respawn: 120, xp: 4, solid: true },
+  { id: 'bamboo', name: 'Touceira de Bambu', item: 'bamboo', qty: 2, tool: 'axe', tier: 1, hits: 3, respawn: 90, xp: 4, solid: true },
 ];
 
 export interface ToolTier {
@@ -119,6 +129,14 @@ export const TOOLS: ToolDef[] = [
       { tier: 1, name: 'Pá de Madeira', level: 9, cost: { coins: 150, items: { plank: 6, stone: 8, rope: 3 } }, needs: 'toolshed' },
       { tier: 2, name: 'Pá de Aço', level: 15, cost: { coins: 700, items: { iron_ingot: 4, beam: 3 } }, needs: 'toolshed' },
       { tier: 3, name: 'Pá Profissional', level: 22, cost: { coins: 2200, items: { iron_ingot: 8, metal_parts: 2 } }, needs: 'smithy' },
+    ],
+  },
+  {
+    id: 'rod', name: 'Vara de Pescar', desc: 'Pesca no Lago das Garças. Vara melhor alcança os peixes graúdos.',
+    tiers: [
+      { tier: 1, name: 'Vara de Bambu Simples', level: 13, cost: { coins: 300, items: { plank: 6, rope: 6, thread: 2 } }, needs: 'toolshed' },
+      { tier: 2, name: 'Vara com Molinete', level: 17, cost: { coins: 900, items: { iron_ingot: 2, thread: 4, beam: 2 } }, needs: 'toolshed' },
+      { tier: 3, name: 'Vara do Pescador Mestre', level: 23, cost: { coins: 2500, items: { gold_ingot: 1, cloth: 4, metal_parts: 2 } }, needs: 'smithy' },
     ],
   },
 ];
@@ -183,6 +201,29 @@ export const RECIPES: RecipeDef[] = [
   r('music_box', 'great_workshop', 23, { gold_ingot: 1, plank: 3, metal_parts: 2 }, 200, 64),
   r('ring', 'jewelry', 24, { gold_ingot: 2, crystal: 1 }, 150, 52),
   r('necklace', 'jewelry', 26, { gold_ingot: 3, crystal: 2 }, 220, 80),
+  // v1.3
+  r('feed', 'mill', 10, { oat: 2 }, 30, 4, 2),
+  r('egg', 'chicken_coop', 10, { feed: 1 }, 60, 5),
+  r('milk', 'dairy', 11, { feed: 2 }, 90, 7),
+  r('cheese', 'creamery', 13, { milk: 3 }, 150, 22),
+  r('butter', 'creamery', 13, { milk: 2 }, 100, 15),
+  r('yogurt', 'creamery', 14, { milk: 2, strawberry: 1 }, 120, 18),
+  r('sugar', 'sugar_mill', 12, { sugarcane: 3 }, 60, 6),
+  r('rapadura', 'sugar_mill', 13, { sugarcane: 4 }, 120, 9),
+  r('cassava_flour', 'flour_house', 11, { cassava: 3 }, 60, 6),
+  r('tapioca', 'flour_house', 12, { cassava_flour: 2 }, 90, 14),
+  r('pao_de_queijo', 'bakery', 15, { cassava_flour: 2, cheese: 1, egg: 1 }, 150, 40),
+  r('fried_fish', 'fishery', 14, { fish: 3, cassava_flour: 1 }, 90, 13),
+  r('smoked_fish', 'fishery', 17, { big_fish: 2, wood: 3 }, 180, 13),
+  r('moqueca', 'fishery', 19, { big_fish: 2, tomato: 3, sunflower_oil: 1 }, 200, 27),
+  r('roasted_coffee', 'roastery', 19, { coffee: 3 }, 90, 9),
+  r('cafe_com_leite', 'roastery', 20, { roasted_coffee: 1, milk: 1, sugar: 1 }, 90, 24),
+  r('chocolate', 'confectionery', 20, { cocoa: 3, sugar: 1 }, 150, 15),
+  r('brigadeiro', 'confectionery', 21, { chocolate: 1, milk: 1, butter: 1 }, 120, 40),
+  r('banana_cake', 'confectionery', 20, { banana: 3, flour: 2, egg: 2 }, 180, 20),
+  r('bamboo_flute', 'bamboo_shop', 26, { bamboo: 3 }, 150, 10),
+  r('bamboo_lamp', 'bamboo_shop', 27, { bamboo: 4, glass: 1 }, 200, 18),
+  r('acai_bowl', 'acai_bar', 27, { acai: 4, banana: 1, sugar: 1 }, 120, 18),
 ];
 
 export const CROP_BY_ID = Object.fromEntries(CROPS.map((x) => [x.id, x])) as Record<string, CropDef>;

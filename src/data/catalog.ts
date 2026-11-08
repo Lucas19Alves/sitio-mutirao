@@ -98,7 +98,7 @@ export function serverCatalog() {
     pets: Object.fromEntries(PETS.map((p) => [p.id, { level: p.level, price: { coins: p.price.coins ?? 0, cr: p.price.cr ?? 0 }, ability: p.ability, values: p.values }])),
     petLevels: PET_LEVELS,
     perks: Object.fromEntries(PERKS.map((p) => [p.id, p.levels])),
-    cosmetics: Object.fromEntries(COSMETICS.map((c) => [c.id, { level: c.level, coins: c.price.coins ?? 0, cr: c.price.cr ?? 0 }])),
+    cosmetics: Object.fromEntries(COSMETICS.map((c) => [c.id, { level: c.level, coins: c.price.coins ?? 0, cr: c.price.cr ?? 0, f: c.f, v: c.v }])),
     rush: RUSH,
     coop: { bell: COOP.bell, fair: { base: COOP.fair.base, perLevel: COOP.fair.perLevel, tiers: COOP.fair.tiers.map(({ name: _n, ...t }) => t) } },
   };

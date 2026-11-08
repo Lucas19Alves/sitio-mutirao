@@ -44,7 +44,14 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
   k.box(hipW, 0.17, 0.21, pantsC, { p: at('hips', 0, -0.01), bone: b('hips') }, 0.06);
   k.box(waist, 0.16, 0.21, L.shirt === 2 ? pantsC : shirtC, { p: at('spine', 0, 0.02), bone: b('spine') }, 0.07);
   k.box(sh, 0.2, fem ? 0.22 : 0.24, shirtC, { p: at('chest', 0, 0.02), bone: b('chest') }, 0.08);
-  if (fem && L.shirt !== 2) k.cyl(0.17, 0.235, 0.15, tint(L.shirt === 3 ? pantsC : shirtC, -0.08), { p: at('hips', 0, -0.06), bone: b('hips') }, 14);
+  if (L.shirt === 4) k.cyl(0.17, 0.3, 0.34, shirtC, { p: at('hips', 0, -0.14), bone: b('hips') }, 16); // vestido
+  else if (L.legs === 2) k.cyl(0.17, 0.27, 0.22, pantsC, { p: at('hips', 0, -0.09), bone: b('hips') }, 16); // saia
+  else if (fem && L.shirt !== 2) k.cyl(0.17, 0.235, 0.15, tint(L.shirt === 3 ? pantsC : shirtC, -0.08), { p: at('hips', 0, -0.06), bone: b('hips') }, 14);
+  if (L.shirt === 5) { // moletom: capuz e bolso canguru
+    k.torus(0.13, 0.05, tint(shirtC, -0.08), { p: at('neck', 0, -0.02, -0.06), r: [Math.PI / 2 - 0.4, 0, 0], bone: b('chest') });
+    k.box(0.2, 0.08, 0.02, tint(shirtC, -0.12), { p: at('spine', 0, 0.0, 0.115), bone: b('spine') }, 0.01);
+  }
+  if (L.shirt === 6) for (const sd of [-1, 1]) k.box(0.13, 0.36, 0.245, tint(shirtC, -0.35), { p: at('chest', sd * 0.1, -0.05, 0.002), bone: b('chest') }, 0.03); // colete
   if (!fem) k.box(0.37, 0.05, 0.24, tint(shirtC, -0.06), { p: at('chest', 0, 0.1), bone: b('chest') }, 0.02);
   if (L.shirt === 1) { // xadrez: faixas mais escuras
     for (const dx of [-0.1, 0, 0.1]) k.box(0.025, 0.2, 0.235, tint(shirtC, -0.3), { p: at('chest', dx, 0.02), bone: b('chest') }, 0.005);
@@ -68,14 +75,15 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
 
   // braços
   for (const [side, s] of [['L', 1], ['R', -1]] as const) {
-    const sleeve = L.shirt === 3 ? skin : shirtC;
+    const sleeve = L.shirt === 3 || L.shirt === 4 ? skin : L.shirt === 6 ? '#f7f6ef' : shirtC;
     k.sphere(0.07, sleeve, { p: at(`sh${side}`, s * 0.02, 0), bone: b(`arm${side}`) }, 10, 8);
     k.capsule(0.055, 0.1, sleeve, { p: at(`arm${side}`, 0, -0.08), bone: b(`arm${side}`) });
     k.capsule(0.048, 0.09, skin, { p: at(`fore${side}`, 0, -0.07), bone: b(`fore${side}`) });
     k.sphere(0.062, skin, { p: at(`hand${side}`, 0, -0.02), bone: b(`hand${side}`) }, 10, 8);
     // pernas
     k.capsule(0.072, 0.1, pantsC, { p: at(`thigh${side}`, 0, -0.1), bone: b(`thigh${side}`) });
-    k.capsule(0.062, 0.1, pantsC, { p: at(`shin${side}`, 0, -0.1), bone: b(`shin${side}`) });
+    k.capsule(0.062, 0.1, L.legs === 0 && L.shirt !== 4 ? pantsC : skin, { p: at(`shin${side}`, 0, -0.1), bone: b(`shin${side}`) });
+    if (L.legs === 1 && L.shirt !== 4) k.cyl(0.075, 0.075, 0.03, tint(pantsC, -0.15), { p: at(`shin${side}`, 0, 0.02), bone: b(`thigh${side}`) }, 8);
     k.box(0.12, 0.08, 0.2, SHOE, { p: at(`foot${side}`, 0, -0.01, 0.035), bone: b(`foot${side}`) }, 0.035);
     k.box(0.125, 0.025, 0.205, tint(SHOE, -0.35), { p: at(`foot${side}`, 0, -0.045, 0.035), bone: b(`foot${side}`) }, 0.008);
   }
@@ -86,13 +94,26 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
   k.sphere(HR, skin, { p: HEAD_C, s: [1, 0.96, 0.95], bone: H }, 14, 10);
   for (const s of [-1, 1]) k.sphere(0.055, tint(skin, -0.06), { p: [hx + s * 0.25, hy - 0.01, hz], s: [0.6, 1, 0.9], bone: H }, 8, 6);
   for (const s of [-1, 1]) {
-    k.sphere(0.042, '#2b1d14', { p: [hx + s * 0.088, hy + 0.0, hz + 0.228], s: [1, 1.32, 0.55], bone: H }, 10, 8);
-    k.sphere(0.014, '#ffffff', { p: [hx + s * 0.088 + 0.012, hy + 0.025, hz + 0.25], bone: H }, 6, 5);
+    const ex = hx + s * 0.088, ey = hy, ez = hz + 0.228;
+    if (L.eyes === 1) k.torus(0.034, 0.011, '#2b1d14', { p: [ex, ey - 0.01, ez + 0.01], r: [0, 0, 0], bone: H }, Math.PI); // felizes (arquinho)
+    else if (L.eyes === 2) k.box(0.07, 0.016, 0.02, '#2b1d14', { p: [ex, ey - 0.005, ez + 0.012], bone: H }, 0.006); // sonolentos
+    else {
+      const big = L.eyes === 3 ? 1.3 : 1;
+      k.sphere(0.042 * big, '#2b1d14', { p: [ex, ey, ez], s: [1, 1.32, 0.55], bone: H }, 10, 8);
+      k.sphere(0.014 * big, '#ffffff', { p: [ex + 0.012, ey + 0.025, ez + 0.022], bone: H }, 6, 5);
+      if (L.eyes === 3) k.sphere(0.008, '#ffffff', { p: [ex - 0.012, ey - 0.02, ez + 0.024], bone: H }, 5, 4);
+      if (L.eyes === 4) for (const j of [-1, 0, 1]) k.box(0.012, 0.035, 0.01, '#2b1d14', { p: [ex + s * 0.03 + j * 0.014 * s, ey + 0.055, ez + 0.01], r: [0, 0, s * (0.5 + j * 0.25)], bone: H }, 0.003);
+    }
     k.sphere(0.04, '#f19a92', { p: [hx + s * 0.15, hy - 0.07, hz + 0.19], s: [1, 0.55, 0.4], bone: H }, 8, 6);
     k.box(0.07, fem ? 0.012 : 0.022, 0.02, tint(hairC, -0.25), { p: [hx + s * 0.09, hy + 0.08, hz + 0.232], r: [0, 0, s * (fem ? -0.2 : -0.08)], bone: H }, 0.006);
     if (fem) for (const j of [-1, 0, 1]) k.box(0.012, 0.03, 0.01, '#2b1d14', { p: [hx + s * (0.088 + 0.03) + j * 0.014 * s, hy + 0.05, hz + 0.236], r: [0, 0, s * (0.5 + j * 0.25)], bone: H }, 0.003);
   }
   k.sphere(0.024, tint(skin, -0.12), { p: [hx, hy - 0.035, hz + 0.255], bone: H }, 8, 6);
+  if (L.face === 1) for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) k.sphere(0.008, tint(skin, -0.35), { p: [hx + sd * (0.12 + (i % 2) * 0.03), hy - 0.04 - Math.floor(i / 2) * 0.025, hz + 0.215], bone: H }, 4, 3);
+  if (L.face === 2) for (const sd of [-1, 1]) k.sphere(0.055, '#f07a8a', { p: [hx + sd * 0.15, hy - 0.07, hz + 0.19], s: [1, 0.6, 0.4], bone: H }, 8, 6);
+  if (L.face === 3) k.box(0.13, 0.03, 0.03, hairC, { p: [hx, hy - 0.06, hz + 0.25], r: [0, 0, 0], bone: H }, 0.012);
+  if (L.face === 4) k.add(new THREE.SphereGeometry(0.24, 12, 6, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), hairC, { p: [hx, hy + 0.02, hz + 0.03], bone: H });
+  if (L.face === 5) k.cone(0.04, 0.08, hairC, { p: [hx, hy - 0.16, hz + 0.21], r: [Math.PI, 0, 0], bone: H }, 6);
   k.torus(0.04, fem ? 0.012 : 0.009, fem ? '#c2465a' : '#7a2c22', { p: [hx, hy - 0.075, hz + 0.236], r: [0.25, 0, Math.PI], bone: H }, Math.PI);
   if (L.acc === 1) for (const s of [-1, 1]) {
     k.torus(0.055, 0.009, '#3a2a22', { p: [hx + s * 0.088, hy + 0.0, hz + 0.245], bone: H });
@@ -110,6 +131,11 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
     const a = (i / 16) * Math.PI * 2, e = 0.25 + (i % 3) * 0.22;
     k.sphere(0.075, hairC, { p: [hx + Math.cos(a) * Math.cos(e) * 0.27, hy + 0.06 + Math.sin(e) * 0.24, hz - 0.03 + Math.sin(a) * Math.cos(e) * 0.25], bone: H }, 9, 7);
   }
+  if (L.hair === 6) k.sphere(0.1, hairC, { p: [hx, hy + 0.27, hz - 0.1], bone: H }, 10, 8); // coque
+  if (L.hair === 7) for (let i = 0; i < 6; i++) k.cone(0.045, 0.14, hairC, { p: [hx, hy + 0.24 - i * 0.02, hz + 0.12 - i * 0.07], r: [-0.3 - i * 0.2, 0, 0], bone: H }, 5); // moicano
+  if (L.hair === 8) { k.box(0.42, 0.4, 0.1, hairC, { p: [hx, hy - 0.13, hz - 0.2], bone: H }, 0.05); for (const sd of [-1, 1]) k.capsule(0.06, 0.22, hairC, { p: [hx + sd * 0.23, hy - 0.12, hz - 0.04], bone: H }); } // longo
+  if (L.hair === 9) k.box(0.4, 0.09, 0.08, hairC, { p: [hx, hy + 0.13, hz + 0.2], r: [-0.4, 0, 0], bone: H }, 0.03); // franja
+  if (L.hair === 10) for (const sd of [-1, 1]) { k.capsule(0.06, 0.16, hairC, { p: [hx + sd * 0.3, hy - 0.02, hz - 0.08], r: [0, 0, sd * 0.4], bone: H }); k.sphere(0.03, CLOTH_COLORS[(L.shirtColor + 2) % CLOTH_COLORS.length], { p: [hx + sd * 0.25, hy + 0.06, hz - 0.08], bone: H }, 6, 5); } // maria-chiquinha
   if (L.hair === 2) { k.capsule(0.07, 0.18, hairC, { p: [hx, hy - 0.06, hz - 0.3], r: [0.5, 0, 0], bone: H }); k.torus(0.05, 0.016, CLOTH_COLORS[L.shirtColor], { p: [hx, hy + 0.05, hz - 0.27], r: [0.9, 0, 0], bone: H }); }
   if (L.hair === 3) for (const s of [-1, 1]) {
     for (let j = 0; j < 4; j++) k.sphere(0.058 - j * 0.005, hairC, { p: [hx + s * 0.22, hy - 0.12 - j * 0.085, hz - 0.04], bone: H }, 9, 7);
@@ -131,11 +157,24 @@ function buildGeometry(L: Look): THREE.BufferGeometry {
     k.add(new THREE.SphereGeometry(0.29, 14, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), hatC, { p: [hx, hy + 0.02, hz - 0.01], r: [-0.3, 0, 0], bone: H });
     k.sphere(0.06, hatC, { p: [hx, hy - 0.02, hz - 0.29], bone: H }, 8, 6);
     for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; k.sphere(0.018, '#ffffff', { p: [hx + Math.cos(a) * 0.2, hy + 0.2, hz + Math.sin(a) * 0.2], bone: H }, 6, 5); }
+  } else if (L.hat === 6) { // vaqueiro
+    k.cyl(0.46, 0.46, 0.03, '#8d5a33', { p: [hx, top - 0.01, hz], r: [-0.08, 0, 0], s: [1, 1, 0.85], bone: H }, 20);
+    k.cyl(0.19, 0.24, 0.22, '#a0673a', { p: [hx, top + 0.1, hz - 0.01], r: [-0.08, 0, 0], bone: H }, 14);
+    k.cyl(0.245, 0.245, 0.04, hatC, { p: [hx, top + 0.02, hz - 0.01], r: [-0.08, 0, 0], bone: H }, 14);
+  } else if (L.hat === 7) { // boina
+    k.add(new THREE.SphereGeometry(0.3, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2), hatC, { p: [hx + 0.03, hy + 0.12, hz - 0.02], r: [-0.15, 0, 0.25], s: [1.05, 0.45, 1.05], bone: H });
+    k.sphere(0.025, tint(hatC, -0.3), { p: [hx + 0.05, hy + 0.27, hz], bone: H }, 6, 5);
+  } else if (L.hat === 8) { // coroa de flores
+    k.torus(0.25, 0.03, '#5da443', { p: [hx, hy + 0.17, hz], r: [Math.PI / 2 - 0.1, 0, 0], bone: H });
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; k.sphere(0.045, ['#ef5b8e', '#ffd54f', '#ffffff', '#9575cd'][i % 4], { p: [hx + Math.cos(a) * 0.25, hy + 0.19, hz + Math.sin(a) * 0.25], bone: H }, 7, 5); }
   } else if (L.hat === 5) {
     k.add(new THREE.SphereGeometry(0.295, 14, 7, 0, Math.PI * 2, 0, Math.PI * 0.55), hatC, { p: [hx, hy + 0.03, hz - 0.01], r: [-0.25, 0, 0], bone: H });
     k.torus(0.27, 0.045, tint(hatC, -0.15), { p: [hx, hy + 0.07, hz + 0.02], r: [Math.PI / 2 - 0.25, 0, 0], bone: H });
     k.sphere(0.07, '#f7f6ef', { p: [hx, hy + 0.32, hz - 0.06], bone: H }, 10, 8);
   }
+  if (L.acc === 5) for (const sd of [-1, 1]) k.sphere(0.022, '#f6c445', { p: [hx + sd * 0.26, hy - 0.08, hz], bone: H }, 6, 5);
+  if (L.acc === 6) { const sc = CLOTH_COLORS[(L.shirtColor + 4) % CLOTH_COLORS.length]; k.torus(0.1, 0.05, sc, { p: at('neck', 0, -0.01), r: [Math.PI / 2, 0, 0], bone: b('neck') }); k.box(0.07, 0.18, 0.03, sc, { p: at('chest', 0.06, -0.02, 0.13), bone: b('chest') }, 0.02); }
+  if (L.acc === 7) for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; k.sphere(0.03, '#ef5b8e', { p: [hx + 0.24, hy + 0.12 + Math.sin(a) * 0.035, hz + 0.05 + Math.cos(a) * 0.035], bone: H }, 6, 5); }
   return k.build();
 }
 

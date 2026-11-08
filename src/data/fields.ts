@@ -40,6 +40,10 @@ export const FIELDS: FieldDef[] = [
   f('sunflower', 'Campo de Girassóis', ['sunflower'], 'colinas', 4, 4, 3, 2, 14, { coins: 800, items: { beam: 8, brick: 10 } }, [{ coins: 1500, items: { nails: 10, beam: 8 } }, { coins: 3000, items: { metal_parts: 2, glass: 8 } }], '#f9c932', '#8d6a3c'),
   f('grape', 'Vinhedo', ['grape'], 'pomar', 56, 26, 3, 2, 16, { coins: 1000, items: { beam: 10, nails: 12 } }, [{ coins: 2000, items: { metal_parts: 2, beam: 8 } }, { coins: 4000, items: { metal_parts: 4, jar: 10 } }], '#7d3fa6', '#7a5232'),
   f('flowers', 'Jardim de Flores', ['rose', 'tulip', 'lavender'], 'vale', 50, 11, 4, 2, 17, { coins: 1300, items: { brick: 16, clay_pot: 8 } }, [{ coins: 2600, items: { vase: 2, glass: 10 } }, { coins: 5000, items: { vase: 4, metal_parts: 3 } }], '#e2386a', '#8a5f3c'),
+  f('oat', 'Campo de Aveia', ['oat'], 'pasto', 6, 66, 3, 2, 10, { coins: 400, items: { plank: 12, rope: 8 } }, [{ coins: 800, items: { beam: 6 } }, { coins: 1800, items: { beam: 10, sack: 4 } }], '#d9c38a', '#8d6a3c'),
+  f('cassava', 'Roça de Mandioca', ['cassava'], 'pasto', 14, 66, 3, 2, 11, { coins: 450, items: { plank: 12, stone: 12 } }, [{ coins: 900, items: { beam: 6, rope: 8 } }, { coins: 2000, items: { brick: 12, sack: 4 } }], '#7cb342', '#7a5230'),
+  f('cane', 'Canavial', ['sugarcane'], 'pasto', 22, 66, 4, 2, 12, { coins: 600, items: { plank: 16, beam: 4 } }, [{ coins: 1200, items: { beam: 8, nails: 6 } }, { coins: 2600, items: { brick: 16, metal_parts: 2 } }], '#9ccc65', '#8a6440'),
+  f('coffee', 'Cafezal', ['coffee'], 'cafezal', 84, 4, 4, 2, 18, { coins: 1400, items: { beam: 12, brick: 12 } }, [{ coins: 2800, items: { metal_parts: 3, beam: 10 } }, { coins: 5500, items: { metal_parts: 6, glass: 10 } }], '#c0392b', '#6d4c41'),
   f('pumpkin', 'Aboboral', ['pumpkin'], 'rio', 33, 47, 6, 1, 19, { coins: 1500, items: { beam: 12, brick: 14 } }, [{ coins: 3000, items: { metal_parts: 3, crate: 6 } }, { coins: 6000, items: { metal_parts: 6, cabinet: 1 } }], '#f28a26', '#7e5634', { obs: 'pontes' }),
 ];
 

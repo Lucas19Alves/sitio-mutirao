@@ -1,25 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../services/supabase.ts';
 import {
-  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, BODIES, SHOE_COLORS, type Look,
+  SKINS, HAIR_STYLES, HAIR_COLORS, SHIRT_STYLES, CLOTH_COLORS, PANTS_COLORS, HATS, ACCESSORIES, LOOK_LIMITS, BODIES, SHOE_COLORS, EYES, FACES, LEGS, type Look,
 } from '../game/art/characters.ts';
 import { COSMETIC_OF } from '../data/catalog.ts';
 import { store } from '../game/state/store.ts';
 import type { Me } from '../App.tsx';
 
 type Field = keyof Look;
-const GROUPS: { label: string; field: Field; names?: string[]; colors?: string[] }[] = [
-  { label: 'Corpo', field: 'body', names: BODIES },
-  { label: 'Pele', field: 'skin', colors: SKINS },
-  { label: 'Cabelo', field: 'hair', names: HAIR_STYLES },
-  { label: 'Cor do cabelo', field: 'hairColor', colors: HAIR_COLORS },
-  { label: 'Roupa', field: 'shirt', names: SHIRT_STYLES },
-  { label: 'Cor da roupa', field: 'shirtColor', colors: CLOTH_COLORS },
-  { label: 'Calça', field: 'pants', colors: PANTS_COLORS },
-  { label: 'Chapéu', field: 'hat', names: HATS },
-  { label: 'Cor do chapéu', field: 'hatColor', colors: CLOTH_COLORS },
-  { label: 'Acessório', field: 'acc', names: ACCESSORIES },
-  { label: 'Calçado', field: 'shoes', colors: SHOE_COLORS },
+const TABS = ['Corpo', 'Rosto', 'Cabelo', 'Roupa', 'Extras'] as const;
+const GROUPS: { label: string; field: Field; names?: string[]; colors?: string[]; tab: (typeof TABS)[number] }[] = [
+  { label: 'Corpo', field: 'body', names: BODIES, tab: 'Corpo' },
+  { label: 'Olhos', field: 'eyes', names: EYES, tab: 'Rosto' },
+  { label: 'Detalhes do rosto', field: 'face', names: FACES, tab: 'Rosto' },
+  { label: 'Pernas', field: 'legs', names: LEGS, tab: 'Roupa' },
+  { label: 'Pele', field: 'skin', colors: SKINS, tab: 'Corpo' },
+  { label: 'Cabelo', field: 'hair', names: HAIR_STYLES, tab: 'Cabelo' },
+  { label: 'Cor do cabelo', field: 'hairColor', colors: HAIR_COLORS, tab: 'Cabelo' },
+  { label: 'Roupa', field: 'shirt', names: SHIRT_STYLES, tab: 'Roupa' },
+  { label: 'Cor da roupa', field: 'shirtColor', colors: CLOTH_COLORS, tab: 'Roupa' },
+  { label: 'Cor da calça ou saia', field: 'pants', colors: PANTS_COLORS, tab: 'Roupa' },
+  { label: 'Chapéu', field: 'hat', names: HATS, tab: 'Extras' },
+  { label: 'Cor do chapéu', field: 'hatColor', colors: CLOTH_COLORS, tab: 'Extras' },
+  { label: 'Acessório', field: 'acc', names: ACCESSORIES, tab: 'Extras' },
+  { label: 'Calçado', field: 'shoes', colors: SHOE_COLORS, tab: 'Roupa' },
 ];
 
 /** Itens pagos ainda não liberados (comprados na Loja; ficam na conta). */
@@ -57,6 +61,7 @@ function LivePreview({ look }: { look: Look; scale?: number }) {
 export function CharacterEditor({ me, onSaved, embedded }: { me: Me; onSaved: (l: Look) => void; embedded?: boolean }) {
   const [look, setLook] = useState<Look>(me.look);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<(typeof TABS)[number]>('Corpo');
   const [err, setErr] = useState('');
   const set = (f: Field, v: number) => setLook({ ...look, [f]: v });
   const random = () => setLook(clean(Object.fromEntries(Object.entries(LOOK_LIMITS).map(([k, n]) => [k, Math.floor(Math.random() * n)])) as unknown as Look));
@@ -80,7 +85,8 @@ export function CharacterEditor({ me, onSaved, embedded }: { me: Me; onSaved: (l
           <button className="btn btn-ghost btn-sm" onClick={random}>Sortear visual</button>
         </div>
         <div className="char-options">
-          {GROUPS.map((g) => (
+          <div className="tabs char-tabs">{TABS.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
+          {GROUPS.filter((g) => g.tab === tab).map((g) => (
             <fieldset key={g.field} className="opt">
               <legend>{g.label}</legend>
               <div className="opt-row">

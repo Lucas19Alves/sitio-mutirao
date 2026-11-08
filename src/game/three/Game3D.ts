@@ -10,13 +10,15 @@ import {
 import { store } from '../state/store.ts';
 import { bus } from '../bus.ts';
 import { realtime, type PosMsg, type PresenceMeta } from '../multiplayer/realtime.ts';
+import { voice } from '../multiplayer/voice.ts';
 import { findPath } from '../systems/pathfinding.ts';
 import { growMs, plotCount, capacity, fieldYield, boardSlots, obstacleInfo } from '../rules.ts';
 import { normalizeLook } from '../art/characters.ts';
 import { obstacleModel, obstacleSite, petModel, signPosts } from './kit/props.ts';
 import { Kit } from './kit/geo.ts';
 import { errorText } from '../../utils/errors.ts';
-import { play } from '../audio.ts';
+import { play, footstep, type Surface } from '../audio.ts';
+import { PATH_TILES, inLake } from '../../data/world.ts';
 import { gfx } from '../gfx.ts';
 import { iconUrl } from '../art/icons.ts';
 import { Engine } from './Engine.ts';
@@ -34,9 +36,9 @@ import { shared } from '../shared.ts';
 
 const SPEED = 4.3;          // tiles/s
 const R_PLAYER = 0.27;
-const WORK_CLIP: Record<string, string> = { axe: 'chop', pickaxe: 'mine', shovel: 'dig', sickle: 'harvest' };
+const WORK_CLIP: Record<string, string> = { axe: 'chop', pickaxe: 'mine', shovel: 'dig', sickle: 'harvest', rod: 'harvest' };
 const RADIUS: Record<string, number> = { tree_oak: 0.3, tree_big: 0.42, apple_tree: 0.32, orange_tree: 0.32, peach_tree: 0.32, rock_small: 0.32, rock_big: 0.5, coal: 0.36, copper: 0.36, iron: 0.36, gold: 0.46, crystal: 0.36 };
-const CHIP: Record<string, string[]> = { axe: ['#d9a766', '#a8713f', '#7cb342'], pickaxe: ['#a7adb2', '#868c92', '#cfd4d8'], shovel: ['#c97b4a', '#ead69e'], sickle: ['#8fcf4a', '#6fb043'] };
+const CHIP: Record<string, string[]> = { axe: ['#d9a766', '#a8713f', '#7cb342'], pickaxe: ['#a7adb2', '#868c92', '#cfd4d8'], shovel: ['#c97b4a', '#ead69e'], sickle: ['#8fcf4a', '#6fb043'], rod: ['#9cc6e0', '#ffffff', '#5fb4d8'] };
 const ENTER_R = 1.55, EXIT_R = 2.35, CLOSE_MS = 650;
 
 export type Target = { kind: 'node'; id: string } | { kind: 'building'; id: string } | { kind: 'plot'; e: string; i: number } | { kind: 'obs'; id: string } | { kind: 'field'; f: string };
@@ -77,6 +79,9 @@ export class Game3D {
   private pets = new Map<string, PetView>();
   private petGeo = new Map<string, THREE.BufferGeometry>();
   private flags: Record<string, THREE.Mesh> = {};
+  private stepDist = 0;
+  private combo = 0;
+  private lastGather = 0;
   private pings: { tag: Tag; ring: THREE.Mesh; until: number }[] = [];
   private lastBell = -1;
   private bellFx = 0;
@@ -165,6 +170,8 @@ export class Game3D {
         const def = PINGS.find((x) => x.k === p.k);
         bus.emit('toast', { kind: 'info', text: `${def?.icon ?? '📍'} ${p.name}: ${def?.text ?? 'Vem cá!'}`, go: { x: p.x, z: p.z } });
       }),
+      // quem está falando ganha um balãozinho de voz no nome
+      bus.on('voice:levels', (lv: Map<string, number>) => { this.me.tag.el.classList.toggle('talking', (lv.get(this.meInfo.id) ?? 0) > 0.06); for (const [u, a] of this.remotes) a.tag.el.classList.toggle('talking', (lv.get(u) ?? 0) > 0.06); }),
       bus.on('walkto', (p: { x: number; z: number }) => { this.walkTo(Math.floor(p.x), Math.floor(p.z)); }),
       bus.on('gotoMember', (u: string) => { const a = this.remotes.get(u); if (a) this.walkTo(Math.floor(a.x), Math.floor(a.z)); else bus.emit('toast', { kind: 'info', text: 'Essa pessoa não está jogando agora.' }); }),
       bus.on('focus', (t: { x: number; y: number }) => { this.camFocus = { p: new THREE.Vector3(t.x, 0, t.y), until: performance.now() + 2600 }; }),
@@ -420,9 +427,33 @@ export class Game3D {
           if (d < min && d > 1e-4) { x = v.x + (ddx / d) * min; z = v.z + (ddz / d) * min; }
         }
       }
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) for (const [sx, sz, r] of this.world.solids.get((tz + dz) * MAP_W + tx + dx) ?? []) {
+        const ddx = x - sx, ddz = z - sz, d = Math.hypot(ddx, ddz), min = r + R_PLAYER;
+        if (d < min && d > 1e-4) { x = sx + (ddx / d) * min; z = sz + (ddz / d) * min; }
+      }
       for (const b of this.boxes) if (x > b[0] - 1 && x < b[2] + 1 && z > b[1] - 1 && z < b[3] + 1) [x, z] = pushBox(x, z, b[0], b[1], b[2], b[3]);
+      // gente e bichos: empurrão suave (não trava, só não atravessa)
+      for (const o of this.people()) { const ddx = x - o.x, ddz = z - o.z, d = Math.hypot(ddx, ddz); if (d < 0.5 && d > 1e-4) { const k = (0.5 - d) * 0.6; x += (ddx / d) * k; z += (ddz / d) * k; } }
     }
     return [x, z];
+  }
+
+  /** Posições de outros personagens perto (para o empurrão suave). */
+  private people(): { x: number; z: number }[] {
+    const out: { x: number; z: number }[] = [];
+    for (const a of this.remotes.values()) out.push(a);
+    for (const c of this.custs.values()) out.push(c.av);
+    for (const h of this.helpers.values()) out.push(h.av);
+    return out.filter((o) => Math.abs(o.x - this.me.x) < 1.5 && Math.abs(o.z - this.me.z) < 1.5);
+  }
+
+  /** Piso sob o jogador, para o som dos passos. */
+  private surface(x: number, z: number): Surface {
+    const tx = Math.floor(x), tz = Math.floor(z);
+    if (tz >= RIVER.y0 && tz <= RIVER.y1) return 'wood';
+    if (inLake(tx + 1, tz) || inLake(tx - 1, tz) || inLake(tx, tz + 1) || inLake(tx, tz - 1)) return 'water';
+    if (this.fieldAt(x, z, 0)) return 'soil';
+    return PATH_TILES.has(`${tx},${tz}`) ? 'dirt' : 'grass';
   }
 
   // ================================================================ laço
@@ -469,6 +500,11 @@ export class Game3D {
       }
     } else this.vel.multiplyScalar(0.8);
     me.place();
+    if (moved) {
+      this.stepDist += speed * dt;
+      const stride = speed > 3 ? 0.78 : 0.6;
+      if (this.stepDist >= stride) { this.stepDist = 0; footstep(this.surface(me.x, me.z), speed > 3); }
+    } else this.stepDist = 0.45;
 
     // trabalho automático por proximidade
     this.cool = Math.max(0, this.cool - dt);
@@ -604,10 +640,10 @@ export class Game3D {
     if (w.nv) {
       const def = w.nv.def;
       w.nv.kind = 'shake'; w.nv.anim = 0.3;
-      play(def.tool === 'axe' ? 'chop' : def.tool === 'pickaxe' ? 'pick' : def.tool === 'shovel' ? 'dig' : 'pop');
+      play(def.tool === 'axe' ? 'chop' : def.tool === 'pickaxe' ? 'pick' : def.tool === 'shovel' ? 'dig' : def.tool === 'rod' ? 'splash' : 'harvest');
       this.fx.burst(new THREE.Vector3(w.nv.x, 0.5, w.nv.z), CHIP[def.tool ?? 'sickle'] ?? CHIP.sickle, 6, { speed: 2, up: 3, size: 0.7 });
       if (def.tool === 'axe') this.fx.burst(new THREE.Vector3(w.nv.x, 1.5, w.nv.z), ['#6fb043', '#5da443', '#8fcf4a'], 5, { speed: 1.2, up: 0.5, size: 0.6, life: 1.2, gravity: 2 });
-    } else { play('dig'); this.fx.burst(new THREE.Vector3(w.x, 0.3, w.z), ['#8a6a3c', '#6fb043'], 5, { speed: 1.4, up: 2, size: 0.5 }); }
+    } else { play(w.action === 'plant' ? 'plant' : 'harvest'); this.fx.burst(new THREE.Vector3(w.x, 0.3, w.z), ['#8a6a3c', '#6fb043'], 5, { speed: 1.4, up: 2, size: 0.5 }); }
   }
 
   private finishWork(w: Work) {
@@ -662,10 +698,23 @@ export class Game3D {
 
   private collectFx(item: string, q: number, from: THREE.Vector3) {
     const me = this.me;
+    const now = performance.now();
+    // combo: coletas seguidas sobem a melodia; a cada 5, uma pequena festa
+    this.combo = now - this.lastGather < 3200 ? this.combo + 1 : 0;
+    this.lastGather = now;
+    const step = this.combo;
+    if (item === 'fish' || item === 'big_fish') play('fish');
     this.drops.spawn(item, Math.min(q, 4), from, () => me.pos.clone().add(new THREE.Vector3(-Math.sin(me.heading) * 0.2, 0.95, -Math.cos(me.heading) * 0.2)), () => {
-      play('pop');
-      this.overlay.float(`+${q} ${escapeHtml(ITEM_BY_ID[item]?.name ?? item)}`, me.pos.clone().setY(1.9));
+      play('pickup', { step });
+      this.overlay.float(`+${q} ${escapeHtml(ITEM_BY_ID[item]?.name ?? item)}`, me.pos.clone().setY(1.9), step >= 4 ? 'w-float hot' : 'w-float');
       bus.emit('gain', { item, q });
+      if (step > 0 && step % 5 === 0) {
+        play('combo', { step });
+        this.overlay.float(`Combo x${step}! 🔥`, me.pos.clone().setY(2.5), 'w-float combo');
+        const ring = ['#f6c445', '#ff8a65', '#ffffff', '#7fc14f'];
+        for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; this.fx.burst(me.pos.clone().add(new THREE.Vector3(Math.cos(a) * 0.7, 0.6, Math.sin(a) * 0.7)), ring, 2, { speed: 1.2, up: 2.5, size: 0.4 }); }
+        bus.emit('combo', step);
+      }
     });
   }
 
@@ -723,7 +772,7 @@ export class Game3D {
     const d = doorTile(BUILDING_BY_ID[id].spot), to = new THREE.Vector3(d.x + 0.5, 0.6, d.y - 0.2);
     const items = Object.keys(bag);
     items.slice(0, 5).forEach((it, i) => setTimeout(() => this.drops.spawn(it, 1, this.me.pos.clone().setY(1.0), () => to), i * 120));
-    play('coin');
+    play('deposit');
     void store.act({ t: 'deposit' }).then((r) => {
       if (!r.ok) { this.denied(errorText(r.e)); return; }
       const q = r.q as number;
@@ -789,6 +838,7 @@ export class Game3D {
   // ================================================================ multiplayer
   private sendPos(force = false) {
     realtime.sendPos({ x: Math.round(this.me.lx), y: Math.round(this.me.ly), d: Math.round(this.me.heading * 1000), a: this.me.anim }, force);
+    voice.setMyPos(Math.round(this.me.lx), Math.round(this.me.ly));
   }
 
   private onPresence(metas: PresenceMeta[], quiet = false) {
@@ -852,10 +902,18 @@ export class Game3D {
     this.grid = buildWalkGrid(regions, built, obs);
     const bridges = obs.has('pontes');
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const r = regionAt(x, y); this.move[y * MAP_W + x] = r && regions.has(r) && !isWater(x, y) && (bridges || y < RIVER.y0 || y > RIVER.y1) ? 1 : 0; }
+    const fences: [number, number, number, number][] = [];
+    for (const f of FIELDS) {
+      const x0 = f.x - 0.25, x1 = f.x + f.cols * 2 + 0.25, z0 = f.y - 0.25, z1 = f.y + f.rows * 2 + 0.25, g = f.x + f.cols, t = 0.08;
+      for (const zz of [z0, z1]) { fences.push([x0 - t, zz - t, g - 0.9, zz + t]); fences.push([g + 0.9, zz - t, x1 + t, zz + t]); }
+      fences.push([x0 - t, z0, x0 + t, z1]); fences.push([x1 - t, z0, x1 + t, z1]);
+    }
     this.boxes = BUILDINGS.filter((b) => built.has(b.id)).map((b) => {
       const s = (store.lvl(b.id) >= 1 ? this.bviews[b.id]?.model.solid : null) ?? [0.15, 0.3, b.spot.w - 0.15, b.spot.h - 0.3];
       return [b.spot.x + s[0], b.spot.y + s[1], b.spot.x + s[2], b.spot.y + s[3]] as [number, number, number, number];
-    });
+    }).concat(fences);
+    // a rota por toque também desvia das árvores e pedras da decoração
+    for (const cell of this.world.solids.keys()) if (cell < this.grid.length) this.grid[cell] = 0;
     if (!this.me) return;
     const tx = Math.floor(this.me.x), tz = Math.floor(this.me.z);
     if (!this.walkable(tx, tz)) {
@@ -1010,7 +1068,7 @@ export class Game3D {
     const tag = this.overlay.tag(`<b>${def.icon}</b><span>${escapeHtml(name)}</span>`, `w-ping${mine ? ' me' : ''}`, new THREE.Vector3(x, 0, z), 1.2);
     this.pings.push({ tag, ring, until: performance.now() + 7000 });
     this.fx.burst(new THREE.Vector3(x, 0.4, z), mine ? ['#f6c445', '#ffffff'] : ['#4a9fd8', '#ffffff'], 12, { speed: 1.6, up: 2.5, size: 0.4 });
-    play('pop');
+    play('ping');
   }
 
   private stepCoop(dt: number) {
@@ -1035,7 +1093,7 @@ export class Game3D {
   private checkBell() {
     const until = store.farm?.progression.bell?.until ?? 0;
     if (this.lastBell >= 0 && until > this.lastBell && until > store.now()) {
-      play('level');
+      play('bell');
       const d = doorTile(BUILDING_BY_ID.farmhouse.spot);
       this.overlay.float('🔔 Mutirão! Colheitas com bônus', new THREE.Vector3(d.x + 0.5, 3, d.y - 1), 'w-float big');
       this.celebrate(false);
@@ -1066,7 +1124,7 @@ export class Game3D {
   /** O obstáculo afunda e encolhe com poeira e confete; o caminho se abre. */
   private removeObstacle(o: OView) {
     o.anim = 1.3;
-    play('build');
+    play('unlock');
     const p = o.g.position;
     for (let i = 0; i < 4; i++) this.fx.burst(new THREE.Vector3(p.x + (i - 1.5) * 0.8, 0.3, p.z), ['#e6dccb', '#d6c8ad', '#b98a50'], 8, { speed: 2.5, up: 2, size: 1.1, gravity: 1, life: 1.2 });
     this.fx.burst(new THREE.Vector3(p.x, 2.2, p.z), ['#f6c445', '#e2574c', '#4a9fd8', '#7fc14f', '#ffffff'], 46, { speed: 4.5, up: 5, size: 0.5, life: 1.8, gravity: 5 });

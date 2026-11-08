@@ -15,6 +15,8 @@ import { normalizeLook } from '../../game/art/characters.ts';
 import { fmt, fmtTime } from '../../utils/format.ts';
 import { play } from '../../game/audio.ts';
 import type { Me } from '../../App.tsx';
+import { useSyncExternalStore } from 'react';
+import { voice } from '../../game/multiplayer/voice.ts';
 
 // ---------------------------------------------------------------- mural
 function projName(k: string) {
@@ -66,7 +68,7 @@ export function BellCard() {
   const now = s.now();
   const on = (b?.until ?? 0) > now, wait = Math.max(0, (b?.next ?? 0) - now);
   const lock = level() < COOP.bell.level ? `Nível ${COOP.bell.level}` : null;
-  const ring = async () => { const r = await act({ t: 'bell' }); if (r.ok) { play('level'); bus.emit('cheer'); } };
+  const ring = async () => { const r = await act({ t: 'bell' }); if (r.ok) { bus.emit('cheer'); } };
   return (
     <section className={`panel bell-card${on ? ' on' : ''}`} data-testid="bell-card">
       <div className="row"><span className="bell-ico" aria-hidden>🔔</span>
@@ -134,6 +136,25 @@ export function FairPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------- voz
+function VoiceCard({ me }: { me: Me }) {
+  useSyncExternalStore(voice.subscribe, voice.getVersion);
+  return (
+    <section className={`panel voice-card${voice.on ? ' on' : ''}`} data-testid="voice-card">
+      <div className="row"><span className="bell-ico" aria-hidden>🎧</span>
+        <div className="grow"><strong>Voz da fazenda</strong>
+          <p className="muted small">{voice.on ? `Conectado com ${voice.peerCount()} ${voice.peerCount() === 1 ? 'pessoa' : 'pessoas'}.` : 'Converse por voz com quem está jogando.'}{voice.micDenied ? ' Microfone bloqueado: você só ouve.' : ''}</p></div></div>
+      {voice.on ? (
+        <div className="row wrap">
+          <Btn small kind={voice.micOn ? 'primary' : 'ghost'} onClick={() => voice.setMic(!voice.micOn)} disabled={voice.micDenied}>{voice.micOn ? '🎙️ Microfone ligado' : '🔇 Microfone desligado'}</Btn>
+          <div className="seg"><button className={voice.mode === 'near' ? 'on' : ''} onClick={() => voice.setMode('near')}>Por perto</button><button className={voice.mode === 'all' ? 'on' : ''} onClick={() => voice.setMode('all')}>Todos</button></div>
+          <Btn small kind="quiet" onClick={() => voice.leave()}>Sair da voz</Btn>
+        </div>
+      ) : <Btn small onClick={() => void voice.join(me.id)} testid="voice-join">Entrar na voz</Btn>}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------- equipe
 function GiftBox({ to, onDone }: { to: Member; onDone: () => void }) {
   const s = useFarm();
@@ -145,7 +166,7 @@ function GiftBox({ to, onDone }: { to: Member; onDone: () => void }) {
   const send = async () => {
     if (!sel) return;
     const r = await act({ t: 'gift', u: to.user_id, i: sel, q: Math.min(q, bag[sel]) });
-    if (r.ok) { play('coin'); toast(`Você deu ${r.q} ${ITEM_BY_ID[sel].name} para ${to.username}.`, 'ok'); onDone(); }
+    if (r.ok) { play('gift'); toast(`Você deu ${r.q} ${ITEM_BY_ID[sel].name} para ${to.username}.`, 'ok'); onDone(); }
   };
   return (
     <div className="gift">
@@ -161,6 +182,7 @@ export function TeamPanel({ me, onClose }: { me: Me; onClose: () => void }) {
   const others = s.members.filter((m) => m.user_id !== me.id);
   return (
     <Sheet title="Equipe" subtitle={`${s.online.size || 1} jogando agora · ${s.members.length} na fazenda`} icon="ui_people" onClose={onClose}>
+      <VoiceCard me={me} />
       <Section title="Avisar o grupo">
         <div className="ping-row">{PINGS.map((p) => <button key={p.k} className="chip" onClick={() => { bus.emit('ping', p.k); onClose(); }} data-testid={`ping-${p.k}`}>{p.icon} {p.text}</button>)}</div>
       </Section>

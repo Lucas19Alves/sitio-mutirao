@@ -2,7 +2,7 @@
 // água animada, pontes, cercas e decoração instanciada. 1 unidade = 1 tile (32 px lógicos).
 import * as THREE from 'three';
 import {
-  MAP_W, MAP_H, RIVER, BRIDGES, PATH_TILES, FIELDS, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
+  MAP_W, MAP_H, RIVER, BRIDGES, LAKE, PATH_TILES, FIELDS, BUILDINGS, WORLD_NODES, SPAWN, REGIONS, regionAt, isWater,
 } from '../../data/catalog.ts';
 import { Kit, rng, tint } from './kit/geo.ts';
 import { matVC, labelTexture } from './kit/materials.ts';
@@ -11,7 +11,7 @@ import { gfx } from '../gfx.ts';
 
 export const MARGIN = 18;
 const BIOME: Record<string, string> = {
-  sitio: '#86bf5a', pomar: '#8fc462', bosque: '#679c4d', rio: '#92c667', colinas: '#a6ad68', vale: '#98cc70', planalto: '#b3a76e', border: '#5a8a48',
+  sitio: '#86bf5a', pomar: '#8fc462', bosque: '#679c4d', rio: '#92c667', colinas: '#a6ad68', vale: '#98cc70', planalto: '#b3a76e', pasto: '#9fd06a', lago: '#94c973', cafezal: '#86b257', mata: '#5f9a48', border: '#5a8a48',
 };
 const PATH_C = new THREE.Color('#d9b98a').convertSRGBToLinear(), BANK_C = new THREE.Color('#c8b37a').convertSRGBToLinear();
 const SOIL_C = FIELDS.map((f) => new THREE.Color(f.soil).convertSRGBToLinear());
@@ -26,6 +26,8 @@ function noise(x: number, y: number) {
 
 /** Altura do terreno em (x, z) em tiles; usada também para pousar objetos. */
 export function heightAt(x: number, z: number): number {
+  const ld = Math.hypot((x - LAKE.cx) / LAKE.rx, (z - LAKE.cy) / LAKE.ry);
+  if (ld < 1.12) return -Math.min(0.6, (1.12 - ld) * 1.9);
   const inRiver = z > RIVER.y0 - 0.2 && z < RIVER.y1 + 1.2;
   if (inRiver) {
     const onBridge = BRIDGES.some((b) => x > b.x0 - 0.2 && x < b.x1 + 1.2);
@@ -186,7 +188,10 @@ export function regionLock(id: string): THREE.Group {
 }
 
 /** Decoração instanciada e determinística (mesma para todos os jogadores). */
-function decor(scene: THREE.Scene) {
+/** Raio de colisão de cada decoração alta (o resto é atravessável: grama, flores, samambaia). */
+const SOLID_R: Record<string, number> = { pine: 0.3, pine2: 0.3, oak_d: 0.34, oak_d2: 0.34, bush: 0.26, berrybush: 0.26, log: 0.32, stone: 0.2, palm: 0.14, banana: 0.18, bamboo_d: 0.3 };
+
+function decor(scene: THREE.Scene, solids: Map<number, [number, number, number][]>) {
   const blocked = new Set<string>();
   const mark = (x: number, y: number) => blocked.add(`${x},${y}`);
   for (const k of PATH_TILES) blocked.add(k);
@@ -203,6 +208,10 @@ function decor(scene: THREE.Scene) {
     colinas: [['stone', 0.06], ['pebbles', 0.06], ['bush', 0.015], ['tuft2', 0.03]],
     vale: [['flowers', 0.1], ['tuft', 0.05], ['bush', 0.02], ['berrybush', 0.015]],
     planalto: [['stone', 0.05], ['pebbles', 0.05], ['pine2', 0.02]],
+    pasto: [['flowers', 0.04], ['tuft', 0.07], ['tuft2', 0.06], ['bush', 0.012], ['oak_d', 0.008]],
+    lago: [['cattail', 0.05], ['flowers', 0.03], ['tuft2', 0.05], ['stone', 0.015], ['oak_d2', 0.01]],
+    cafezal: [['banana', 0.025], ['palm', 0.01], ['fern', 0.05], ['tuft', 0.05], ['bush', 0.02]],
+    mata: [['bamboo_d', 0.02], ['palm', 0.025], ['fern', 0.09], ['pine', 0.02], ['mush', 0.03], ['bush', 0.03], ['log', 0.008]],
   };
   const geos = decorGeometries();
   const lists: Record<string, THREE.Matrix4[]> = {};
@@ -215,6 +224,7 @@ function decor(scene: THREE.Scene) {
   for (let ty = -MARGIN + 2; ty < MAP_H + MARGIN - 2; ty++) for (let tx = -MARGIN + 2; tx < MAP_W + MARGIN - 2; tx++) {
     const roll = r(), jx = r(), jy = r(), sc = r();
     if (blocked.has(`${tx},${ty}`)) continue;
+    if (Math.hypot((tx + 0.5 - LAKE.cx) / LAKE.rx, (ty + 0.5 - LAKE.cy) / LAKE.ry) < 1.15) { if (roll < 0.06 * dens) put('lily', tx + jx, ty + jy, 0.8 + sc * 0.5, jx * 6); continue; }
     if (ty >= RIVER.y0 - 1 && ty <= RIVER.y1 + 1) {
       if (isWater(tx, ty) && roll < 0.05 * dens) put('lily', tx + jx, ty + 0.3 + jy * 0.5, 0.8 + sc * 0.4, jx * 6);
       continue;
@@ -227,7 +237,9 @@ function decor(scene: THREE.Scene) {
       const tree = /pine|oak/.test(k);
       acc += big || tree ? p : p * dens;
       if (roll >= acc) continue;
-      put(k, tx + 0.2 + jx * 0.6, ty + 0.2 + jy * 0.6, tree ? 0.85 + sc * 0.45 : 0.8 + sc * 0.5, jx * 6.28);
+      const px = tx + 0.2 + jx * 0.6, pz = ty + 0.2 + jy * 0.6, psc = tree ? 0.85 + sc * 0.45 : 0.8 + sc * 0.5;
+      put(k, px, pz, psc, jx * 6.28);
+      if (SOLID_R[k] && tx >= 0 && ty >= 0 && tx < MAP_W && ty < MAP_H) { const cell = ty * MAP_W + tx; (solids.get(cell) ?? solids.set(cell, []).get(cell)!).push([px, pz, SOLID_R[k] * psc]); }
       break;
     }
   }
@@ -241,7 +253,7 @@ function decor(scene: THREE.Scene) {
     const im = new THREE.InstancedMesh(geos[kind], matVC, mats.length);
     mats.forEach((m, i) => im.setMatrixAt(i, m));
     im.instanceMatrix.needsUpdate = true;
-    const tall = /pine|oak|bush|log|stone/.test(kind);
+    const tall = /pine|oak|bush|log|stone|palm|banana|bamboo/.test(kind);
     im.castShadow = tall && gfx.quality === 'high'; im.receiveShadow = true;
     im.computeBoundingSphere();
     im.name = `decor_${kind}`;
@@ -252,6 +264,8 @@ function decor(scene: THREE.Scene) {
 }
 
 export class World {
+  /** obstáculos da decoração por tile (x, z, raio) */
+  solids = new Map<number, [number, number, number][]>();
   terrain: THREE.Mesh;
   water: THREE.Mesh;
   private bridgeOk: THREE.Mesh;
@@ -261,8 +275,17 @@ export class World {
     this.water = water();
     this.bridgeOk = bridges(false); this.bridgeBroken = bridges(true);
     this.bridgeOk.visible = false;
+    // Lago das Garças: mesma água animada do rio
+    const wm = this.water.material as THREE.ShaderMaterial, lm = wm.clone();
+    lm.vertexShader = wm.vertexShader.replace('vEdge = abs(uv.y - 0.5) * 2.0;', 'vEdge = length(uv - 0.5) * 2.0;');
+    lm.fragmentShader = wm.fragmentShader.replace('step(0.965, r2) * 0.5', 'step(0.99, r2) * 0.08');
+    lm.uniforms.uTime = wm.uniforms.uTime; // mesma animação do rio
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 40), lm);
+    lake.rotation.x = -Math.PI / 2; lake.scale.set(LAKE.rx + 0.4, LAKE.ry + 0.4, 1); lake.position.set(LAKE.cx, -0.16, LAKE.cy);
+    lake.name = 'lake';
+    scene.add(lake);
     scene.add(this.terrain, this.water, this.bridgeOk, this.bridgeBroken, fieldFences());
-    decor(scene);
+    decor(scene, this.solids);
   }
   /** Pontes inteiras só depois da obra coletiva. */
   setBridges(fixed: boolean) { this.bridgeOk.visible = fixed; this.bridgeBroken.visible = !fixed; }

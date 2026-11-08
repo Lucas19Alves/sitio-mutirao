@@ -44,6 +44,12 @@ export const WORKERS: WorkerDef[] = [
   { id: 'florista', name: 'Iara', role: 'Florista', item: 'petals', region: 'vale', node: 'wildflower', level: 18, per: 40, cap: 30,
     costs: [{ coins: 2400, items: { vase: 2 } }, { coins: 4800, items: { bouquet: 3 } }, { coins: 8000, items: { perfume: 3 } }],
     look: { skin: 1, hair: 3, hairColor: 4, shirt: 3, shirtColor: 4, pants: 0, hat: 4, hatColor: 8, acc: 2 } },
+  { id: 'pescador', name: 'Seu Quim', role: 'Pescador', item: 'fish', region: 'lago', node: 'fish_spot', level: 15, per: 40, cap: 30,
+    costs: [{ coins: 1500, items: { rope: 10, plank: 10 } }, { coins: 3200, items: { thread: 8 } }, { coins: 6000, items: { metal_parts: 4 } }],
+    look: { skin: 4, hair: 0, hairColor: 6, shirt: 1, shirtColor: 1, pants: 3, hat: 1, hatColor: 6, acc: 0 } },
+  { id: 'vaqueira', name: 'Dona Zefa', role: 'Vaqueira', item: 'milk', region: 'pasto', node: 'grass', level: 13, per: 60, cap: 20,
+    costs: [{ coins: 1800, items: { feed: 10, plank: 10 } }, { coins: 3600, items: { beam: 8 } }, { coins: 7000, items: { metal_parts: 4 } }],
+    look: { skin: 2, hair: 2, hairColor: 1, shirt: 2, shirtColor: 7, pants: 2, hat: 3, hatColor: 0, acc: 4 } },
 ];
 
 export const WORKER_BY_ID = Object.fromEntries(WORKERS.map((w) => [w.id, w])) as Record<string, WorkerDef>;

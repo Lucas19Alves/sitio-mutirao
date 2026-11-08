@@ -27,7 +27,7 @@ export function OrdersPanel({ onClose }: { onClose: () => void }) {
   const have = (k: string) => s.qty(k) + (bag[k] ?? 0);
   const deliver = async (slot: number) => {
     const r = await act({ t: 'order', o: slot });
-    if (r.ok) { play('coin'); bus.emit('pose', 'sell'); toast(`${r.npc ?? 'Cliente'} agradece! +${fmt(Number(r.g ?? 0))} moedas${Number(r.cr) ? ` e ${r.cr} 💎` : ''}`, 'ok'); }
+    if (r.ok) { play('sell'); play('thanks'); bus.emit('pose', 'sell'); toast(`${r.npc ?? 'Cliente'} agradece! +${fmt(Number(r.g ?? 0))} moedas${Number(r.cr) ? ` e ${r.cr} 💎` : ''}`, 'ok'); }
   };
   const cgive = async (item: string, q: number) => {
     const r = await act({ t: 'cgive', i: item, q });

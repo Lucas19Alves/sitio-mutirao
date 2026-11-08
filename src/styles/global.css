@@ -729,3 +729,31 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--leaf); fle
 .fair-tier.ready { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent); }
 .fair-tier.claimed { opacity: .65; }
 .fair-tier em { font-size: 11px; color: var(--leaf); font-weight: 800; }
+
+/* ================================================================ v1.3: dopamina */
+.w-float.hot { color: #d84315; font-size: 15px; }
+.w-float.combo { font-family: var(--fd); font-size: 24px; color: #fff; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); animation: comboPop 1.3s ease-out forwards; }
+@keyframes comboPop { 0% { scale: .4; opacity: 0; } 15% { scale: 1.35; opacity: 1; } 30% { scale: 1; } 100% { translate: -50% -60px; opacity: 0; } }
+.combo-badge { position: absolute; z-index: 11; top: calc(150px + var(--sat)); left: 50%; translate: -50% 0; font-family: var(--fd); font-size: 18px; color: var(--ink); background: linear-gradient(180deg, #fff8dc, #ffd54f); border: 2.5px solid var(--ink); border-radius: 99px; padding: 2px 16px; box-shadow: var(--shadow-sm); animation: comboBadge .35s cubic-bezier(.3, 1.8, .5, 1); pointer-events: none; }
+.combo-badge b { font-size: 22px; color: #d84315; }
+@keyframes comboBadge { from { scale: .3; } to { scale: 1; } }
+
+/* ================================================================ v1.3: voz e permissões */
+.mic-btn { width: 48px; height: 48px; font-size: 20px; }
+.mic-btn.live { background: #e8f5e9; }
+.mic-btn.talking { box-shadow: 0 0 0 3px var(--leaf-2), var(--shadow-sm); }
+.w-name.talking::after { content: ' 🔊'; }
+.w-name.talking { box-shadow: 0 0 0 2px var(--leaf-2); }
+.voice-card { display: grid; gap: 6px; margin-bottom: 8px; }
+.voice-card.on { border-color: var(--leaf); }
+.perm-wrap { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(30, 40, 25, .55); padding: 16px; }
+.perm { max-width: 460px; width: 100%; display: grid; gap: 10px; padding: 18px; }
+.perm h2 { margin: 0; font-family: var(--fd); }
+.perm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.perm-list li { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--paper); }
+.perm-list li.granted { border-color: var(--leaf-2); background: #f1f9ec; }
+.perm-list li.denied { border-color: var(--tomato); }
+.perm-list small { display: block; color: var(--muted); font-size: 12px; }
+.perm-list em { font-size: 12px; font-style: normal; font-weight: 800; color: var(--leaf); white-space: nowrap; }
+.perm-ico { font-size: 24px; }
+.char-tabs { margin-bottom: 8px; }
