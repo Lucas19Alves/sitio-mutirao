@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { ITEM_BY_ID, REGION_BY_ID, MAP_W, MAP_H, TILE } from '../data/catalog.ts';
 import { mainsOpen, goalProgress, goalIcon } from '../game/missions.ts';
-import { store } from '../game/state/store.ts';
+import { store, type LogEntry } from '../game/state/store.ts';
+import { COOP, PINGS } from '../data/catalog.ts';
+import { logText } from './panels/Coop.tsx';
+import { fmtTime } from '../utils/format.ts';
+import { toast } from './ui.tsx';
 import { useFarm, useTicker } from '../hooks/useStore.ts';
 import { bus, type PanelId } from '../game/bus.ts';
 import { xpNeed, unlocksAt } from '../game/rules.ts';
@@ -131,6 +135,8 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const [modal, setModal] = useState<{ kind: 'level'; lv: number } | { kind: 'region'; id: string } | null>(null);
   const [gain, setGain] = useState<{ n: number; k: number } | null>(null);
   useEffect(() => bus.on('bagfull', () => setBagAlert(Date.now())), []);
+  useEffect(() => bus.on('feed', (list: LogEntry[]) => { for (const e of list.filter((x) => x.u !== store.myId).slice(0, 2)) { const t = logText(e); toast(`${t.icon} ${t.text}`, 'info'); } }), []);
+  const [pingOpen, setPingOpen] = useState(false);
   useEffect(() => bus.on('levelup', (lv: number) => setModal({ kind: 'level', lv })), []);
   const f = s.farm!;
   const nRegions = f.progression.regions.length;
@@ -160,6 +166,11 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
   const open = (p: PanelId) => { setMore(false); onOpen(p); };
   const toggleMap = () => { const v = !mapOpen; setMapOpen(v); try { localStorage.setItem('sm-minimap', v ? '1' : '0'); } catch { /* */ } };
   const myLook = normalizeLook(me.look);
+  const fair = f.progression.fair;
+  let fairNeed = 0, fairGot = 0;
+  if (fair) for (const [k, q] of Object.entries(fair.goal)) { const p = ITEM_BY_ID[k]?.price ?? 1; fairNeed += q * p; fairGot += Math.min(q, fair.got[k] ?? 0) * p; }
+  const fairPct = fairNeed ? Math.floor((100 * fairGot) / fairNeed) : 0;
+  const fairReady = !!fair && COOP.fair.tiers.some((t, i) => fairPct >= t.pct * 100 && !fair.claimed.includes(String(i)));
   void bagAlert; void ITEM_BY_ID;
 
   return (
@@ -186,15 +197,14 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
           </div>
         </div>
         <div className="tb-right">
-          {!narrow && (
-            <div className="players" aria-label="Membros da fazenda">
-              {s.members.filter((m) => m.user_id !== me.id).map((m) => (
-                <div key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}`} title={`${m.username}${s.online.has(m.user_id) ? ' (online)' : ' (offline)'}`}>
-                  <Portrait look={normalizeLook(m.look)} scale={0.36} className="pl-face" />
-                </div>
-              ))}
-            </div>
-          )}
+          <button className="team-stack" onClick={() => open('team')} aria-label="Equipe" data-testid="hud-team">
+            {s.members.filter((m) => m.user_id !== me.id).slice(0, narrow ? 2 : 3).map((m) => (
+              <span key={m.user_id} className={`pl${s.online.has(m.user_id) ? ' on' : ''}`} title={`${m.username}${s.online.has(m.user_id) ? ' (jogando)' : ''}`}>
+                <Portrait look={normalizeLook(m.look)} className="pl-face" />
+              </span>
+            ))}
+            <b>👥{s.members.length > 1 ? ` ${[...s.online].filter((u) => u !== me.id).length}/${s.members.length - 1}` : ''}</b>
+          </button>
           <span className={`net${s.connected ? ' ok' : ''}`} title={s.connected ? 'Conectado em tempo real' : 'Reconectando…'} data-testid="net-status">{s.connected ? 'online' : 'reconectando'}</span>
           <button className={`ibtn${more ? ' on' : ''}`} onClick={() => setMore(!more)} aria-label="Mais opções" aria-expanded={more} data-testid="dock-more">
             <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="5" cy="12" r="2.2" fill="currentColor" /><circle cx="12" cy="12" r="2.2" fill="currentColor" /><circle cx="19" cy="12" r="2.2" fill="currentColor" /></svg>
@@ -220,6 +230,13 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
         </div>
       )}
 
+      {!panelOpen && (
+        <div className="status-chips">
+          {(f.progression.bell?.until ?? 0) > s.now() && <button className="schip bell" onClick={() => open('team')} data-testid="chip-bell">🔔 Mutirão {fmtTime((f.progression.bell?.until ?? 0) - s.now())}</button>}
+          {f.progression.fair && <button className="schip fair" onClick={() => open('fair')} data-testid="chip-fair">🎪 Feira {fairPct}%{fairReady ? ' · prêmio!' : ''}</button>}
+        </div>
+      )}
+
       {/* missão principal: pílula compacta no canto (o centro fica livre para o mundo) */}
       {!panelOpen && main && (
         <div className={`quest-pill${done ? ' quest-done' : ''}${questOpen ? ' wide' : ''}`} data-testid="quest-card">
@@ -229,12 +246,19 @@ export function Hud({ me, onOpen, panelOpen, panel }: { me: Me; onOpen: (p: Pane
             <i className="qp-n">{qv}/{qn}</i>
           </button>
           <button className="quest-fold" onClick={() => setQuestOpen(!questOpen)} aria-label={questOpen ? 'Recolher' : 'Expandir'}>{questOpen ? '−' : '+'}</button>
+          <span className="qp-bar"><i style={{ width: `${Math.min(100, (100 * qv) / Math.max(1, qn))}%` }} /></span>
           {questOpen && <p className="qp-desc">{main.desc}</p>}
         </div>
       )}
 
       {/* controles do mundo */}
       {!panelOpen && joy && <Joystick />}
+      {!panelOpen && (
+        <div className="ping-fab">
+          {pingOpen && <div className="ping-menu card-paper">{PINGS.map((p) => <button key={p.k} className="chip" onClick={() => { bus.emit('ping', p.k); setPingOpen(false); }}>{p.icon} {p.text}</button>)}</div>}
+          <button className={`ibtn ping-btn${pingOpen ? ' on' : ''}`} onClick={() => setPingOpen(!pingOpen)} aria-label="Avisar o grupo" aria-expanded={pingOpen} data-testid="ping-btn">📣</button>
+        </div>
+      )}
       <div className="hud-actions">
         {!narrow && (
           <div className="zoom">

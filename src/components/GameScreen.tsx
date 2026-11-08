@@ -96,7 +96,7 @@ export function GameScreen({ farmId, me, onExit, onLookChange }: { farmId: strin
 
   return (
     <div className="game" onPointerDown={() => { sound.unlock(); music.start(); }}>
-      <div className="game-canvas" ref={host} data-testid="game-canvas" />
+      <div className="game-canvas" ref={host} data-testid="game-canvas" onPointerDown={() => { if (panelRef.current && !ctxRef.current) close(); }} />
       {phase === 'loading' && (
         <div className="loading">
           <div className="loading-plate">

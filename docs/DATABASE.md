@@ -126,3 +126,17 @@ delete from auth.users where email ~ '^(ta|tb|coop_a|coop_b|vitrine)_[a-z0-9_]+@
   - `game.gen_mission`, `game.pet_bonus`, `game.pet_xp`, `game.grow_mult`, `game.pay_cr`.
 - **Gatilho `guard_look` em `profiles`:** item de visual pago que não está em `owned` volta ao padrão.
 - **Catálogo (`game.catalog`):** novas chaves `fields`, `obstacles`, `mains`, `pets`, `petLevels`, `perks`, `cosmetics` e `rush`. `items[].req` traz os requisitos de cada item. `quests` saiu.
+
+## v1.2 — cooperação (migration `20261108000008_coop.sql`)
+
+- **Sem colunas novas.** O estado novo fica em `farms.progression`:
+  - `bell`: `{until, next, by}`;
+  - `fair`: `{w, goal, got, by, claimed}`;
+  - `log`: as últimas 30 conquistas.
+- **Ações novas em `farm_act`:**
+  - `bell`;
+  - `fair`, `fgive`, `fclaim` (feira);
+  - `gift` (mochila → mochila de um colega).
+- **Ações alteradas:** `harvest` e `reap` dão o bônus do sino (`game.bell_bonus`).
+- **`farm_act` grava o mural** com `game.log_entry`. O delta agora traz `bags` (mochilas de todos), porque presentes mudam a mochila de outro membro.
+- **Catálogo:** nova chave `coop` (sino e feira).

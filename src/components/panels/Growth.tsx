@@ -91,8 +91,22 @@ export function MissionsPanel({ onClose }: { onClose: () => void }) {
   const mains = mainsOpen();
   const ms = s.farm!.progression.ms ?? {};
   const doneN = s.farm!.progression.mdone?.length ?? 0;
+  const ready = mains.filter((m) => { const [v, n] = goalProgress(m.goal); return v >= n; });
+  // fazendas antigas já cumpriram muitas etapas: recebe tudo o que estiver pronto, em cadeia
+  const claimAll = async () => {
+    let got = 0, coins = 0, cr = 0;
+    for (let guard = 0; guard < 45; guard++) {
+      const next = mainsOpen().find((m) => { const [v, n] = goalProgress(m.goal); return v >= n; });
+      if (!next) break;
+      const r = await store.act({ t: 'main', m: next.id });
+      if (!r.ok) break;
+      got++; coins += next.r.coins; cr += next.r.cr ?? 0;
+    }
+    if (got) { play('level'); bus.emit('cheer'); toast(`${got} missões recebidas: +${fmt(coins)} moedas${cr ? `, +${cr} 💎` : ''}`, 'ok'); }
+  };
   return (
     <Sheet title="Missões" subtitle={`Campanha ${doneN}/${MAIN.length} · as tarefas mudam com o que a fazenda já tem`} icon="ui_scroll" onClose={onClose}>
+      {ready.length > 1 && <Btn onClick={claimAll} testid="claim-all">Receber todas as prontas ({ready.length}+)</Btn>}
       <ul className="list">{mains.slice(0, 3).map((m, i) => <MainCard key={m.id} m={m} first={i === 0} onClose={onClose} />)}</ul>
       {mains.length === 0 && <p className="note">Campanha completa! Continue com as missões do dia.</p>}
       {(ms.side?.length ?? 0) > 0 && (
@@ -116,6 +130,8 @@ export function MissionsPanel({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- central da fazenda
 const HUB: { id: PanelId; label: string; icon: string; cat: string }[] = [
+  { id: 'team', label: 'Equipe', icon: 'ui_people', cat: 'sky' },
+  { id: 'fair', label: 'Feira', icon: 'ui_coins', cat: 'gold' },
   { id: 'inventory', label: 'Estoque', icon: 'ui_barn', cat: 'leaf' },
   { id: 'orders', label: 'Balcão', icon: 'ui_scroll', cat: 'sky' },
   { id: 'sell', label: 'Mercado', icon: 'ui_coins', cat: 'gold' },

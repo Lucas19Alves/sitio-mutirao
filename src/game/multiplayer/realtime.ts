@@ -45,6 +45,7 @@ class FarmRealtime {
       .on('broadcast', { event: 'members' }, ({ payload }) => store.setMembers(payload.members as Member[]))
       .on('broadcast', { event: 'pos' }, ({ payload }) => { this.lastPos.set(payload.u, payload as PosMsg); bus.emit('net:pos', payload as PosMsg); })
       .on('broadcast', { event: 'emote' }, ({ payload }) => bus.emit('net:emote', payload))
+      .on('broadcast', { event: 'ping' }, ({ payload }) => bus.emit('net:ping', payload))
       .on('presence', { event: 'sync' }, () => {
         const state = ch.presenceState<PresenceMeta>();
         const metas = Object.values(state).map((arr) => arr[0]).filter(Boolean);
@@ -94,6 +95,12 @@ class FarmRealtime {
     if (!this.ch || !store.connected || (!force && now - this.lastSent < 200)) return;
     this.lastSent = now;
     void this.ch.send({ type: 'broadcast', event: 'pos', payload: { ...p, u: this.me!.u, t: Date.now() } });
+  }
+
+  /** Sinal no mapa para o grupo (Vem cá!, Preciso de ajuda…). */
+  ping(p: { x: number; z: number; k: string }) {
+    if (!this.ch) return;
+    void this.ch.send({ type: 'broadcast', event: 'ping', payload: { ...p, u: this.me!.u, name: this.me!.name } });
   }
 
   emote(kind: string) {

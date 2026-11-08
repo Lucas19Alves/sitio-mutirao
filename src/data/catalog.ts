@@ -8,6 +8,7 @@ export * from './fields.ts';
 export * from './obstacles.ts';
 export * from './missions.ts';
 export * from './shop.ts';
+export * from './coop.ts';
 
 import { ITEMS } from './items.ts';
 import { CROPS, NODES, TOOLS, RECIPES, NODE_BY_ID, RECIPE_BY_ID } from './production.ts';
@@ -19,6 +20,7 @@ import { FIELDS, FIELD_OF_CROP, FIELD_SPEED, FIELD_YIELD, fieldPlots } from './f
 import { OBSTACLES } from './obstacles.ts';
 import { MAIN } from './missions.ts';
 import { PETS, PET_LEVELS, PERKS, COSMETICS, RUSH } from './shop.ts';
+import { COOP } from './coop.ts';
 
 /** De onde vem cada item: região onde aparece e, para produtos, o prédio. */
 export function itemSource(id: string): { r: string; b?: string } {
@@ -98,6 +100,7 @@ export function serverCatalog() {
     perks: Object.fromEntries(PERKS.map((p) => [p.id, p.levels])),
     cosmetics: Object.fromEntries(COSMETICS.map((c) => [c.id, { level: c.level, coins: c.price.coins ?? 0, cr: c.price.cr ?? 0 }])),
     rush: RUSH,
+    coop: { bell: COOP.bell, fair: { base: COOP.fair.base, perLevel: COOP.fair.perLevel, tiers: COOP.fair.tiers.map(({ name: _n, ...t }) => t) } },
   };
 }
 

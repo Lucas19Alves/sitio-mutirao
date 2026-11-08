@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BUILDING_BY_ID, REGIONS, WORLD_NODES, NODE_BY_ID, CROP_BY_ID, ITEM_BY_ID, TOOL_BY_ID, WORKER_BY_ID,
-  MAP_W, MAP_H, TILE, SPAWN, FIELDS, OBSTACLES, PET_BY_ID, RIVER, fieldPlot, doorTile, buildWalkGrid, regionAt, isWater, workerPeriodMs,
+  MAP_W, MAP_H, TILE, SPAWN, FIELDS, OBSTACLES, PET_BY_ID, RIVER, PINGS, fieldPlot, doorTile, buildWalkGrid, regionAt, isWater, workerPeriodMs,
   type WorldNode, type ToolId, type FieldDef, type ObstacleDef,
 } from '../../data/catalog.ts';
 import { store } from '../state/store.ts';
@@ -77,6 +77,9 @@ export class Game3D {
   private pets = new Map<string, PetView>();
   private petGeo = new Map<string, THREE.BufferGeometry>();
   private flags: Record<string, THREE.Mesh> = {};
+  private pings: { tag: Tag; ring: THREE.Mesh; until: number }[] = [];
+  private lastBell = -1;
+  private bellFx = 0;
   private bviews: Record<string, BView> = {};
   private locks: Record<string, THREE.Group> = {};
   private helpers = new Map<string, Helper>();
@@ -156,6 +159,14 @@ export class Game3D {
       bus.on('fieldseed', (v: { f: string; c: string }) => { this.fieldSeed[v.f] = v.c; }),
       bus.on('members', () => this.refreshPets()),
       bus.on('goto', (t: Target) => this.interact(t)),
+      bus.on('ping', (k: string) => { realtime.ping({ x: this.me.x, z: this.me.z, k }); this.showPing(this.me.x, this.me.z, k, this.meInfo.name, true); }),
+      bus.on('net:ping', (p: { x: number; z: number; k: string; name: string; u: string }) => {
+        this.showPing(p.x, p.z, p.k, p.name, false);
+        const def = PINGS.find((x) => x.k === p.k);
+        bus.emit('toast', { kind: 'info', text: `${def?.icon ?? '📍'} ${p.name}: ${def?.text ?? 'Vem cá!'}`, go: { x: p.x, z: p.z } });
+      }),
+      bus.on('walkto', (p: { x: number; z: number }) => { this.walkTo(Math.floor(p.x), Math.floor(p.z)); }),
+      bus.on('gotoMember', (u: string) => { const a = this.remotes.get(u); if (a) this.walkTo(Math.floor(a.x), Math.floor(a.z)); else bus.emit('toast', { kind: 'info', text: 'Essa pessoa não está jogando agora.' }); }),
       bus.on('focus', (t: { x: number; y: number }) => { this.camFocus = { p: new THREE.Vector3(t.x, 0, t.y), until: performance.now() + 2600 }; }),
       bus.on('recenter', () => { this.camFocus = null; }),
       bus.on('ctxpanel', (on: boolean) => { this.ctxOpen = on; }),
@@ -337,6 +348,7 @@ export class Game3D {
     if (!hit) return;
     const tx = Math.floor(hit.point.x), tz = Math.floor(hit.point.z);
     // tocou num recurso ou prédio: vai até ele
+    for (const c of this.custs.values()) if (Math.hypot(c.av.x - hit.point.x, c.av.z - hit.point.z) < 0.7) { this.interact({ kind: 'building', id: 'order_board' }); return; }
     const nv = this.nodeCells.get(tz * MAP_W + tx)?.[0];
     if (nv) { this.interact({ kind: 'node', id: nv.n.id }); return; }
     const b = BUILDINGS.find((b) => tx >= b.spot.x && tx < b.spot.x + b.spot.w && tz >= b.spot.y && tz < b.spot.y + b.spot.h);
@@ -480,6 +492,7 @@ export class Game3D {
     this.stepCustomers(dt);
     this.stepPets(dt);
     this.animateObstacles(dt);
+    this.stepCoop(dt);
     this.updateZones();
     this.animateNodes(dt);
     this.animatePlots(dt);
@@ -826,6 +839,7 @@ export class Game3D {
     this.refreshNodes();
     this.refreshCustomers();
     this.refreshPets();
+    this.checkBell();
     const used = store.bagUsed();
     this.me?.c.setPile(used / store.bagCap(), Object.keys(store.bag()).map((i) => ITEM_BY_ID[i]?.icon.c ?? '#b9824e'));
     this.firstRefresh = false;
@@ -900,6 +914,9 @@ export class Game3D {
     for (const fv of this.fviews) {
       const e = `f:${fv.def.id}`, flv = store.lvl(e), count = plotCount(e), slots = store.ents[e]?.state.p ?? [];
       fv.plots.forEach((pl, i) => {
+        const was = pl.g.visible;
+        pl.g.visible = flv > 0;
+        if (!was && flv > 0 && !this.firstRefresh) pl.pop = 0.4;
         const locked = i >= count;
         pl.g.getObjectByName('soil')!.visible = !locked;
         pl.g.getObjectByName('locked')!.visible = locked;
@@ -981,6 +998,49 @@ export class Game3D {
     const p = this.me.pos.clone().setY(1.6);
     if (big) this.fx.burst(p, ['#f6c445', '#e2574c', '#4a9fd8', '#7fc14f', '#ffffff', '#9152b8'], 40, { speed: 3.5, up: 5, size: 0.45, life: 1.5, gravity: 5 });
     else this.fx.burst(p, ['#f6c445', '#ffffff'], 14, { speed: 2, up: 3, size: 0.35 });
+  }
+
+  // ================================================================ cooperação: sino e sinais
+  /** Sinal no mapa: argola pulsando no chão e etiqueta com quem chamou. */
+  private showPing(x: number, z: number, k: string, name: string, mine: boolean) {
+    const def = PINGS.find((p) => p.k === k) ?? PINGS[0];
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 28), new THREE.MeshBasicMaterial({ color: mine ? '#f6c445' : '#4a9fd8', transparent: true, opacity: 0.9, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, heightAt(x, z) + 0.05, z); ring.renderOrder = 3;
+    this.eng.scene.add(ring);
+    const tag = this.overlay.tag(`<b>${def.icon}</b><span>${escapeHtml(name)}</span>`, `w-ping${mine ? ' me' : ''}`, new THREE.Vector3(x, 0, z), 1.2);
+    this.pings.push({ tag, ring, until: performance.now() + 7000 });
+    this.fx.burst(new THREE.Vector3(x, 0.4, z), mine ? ['#f6c445', '#ffffff'] : ['#4a9fd8', '#ffffff'], 12, { speed: 1.6, up: 2.5, size: 0.4 });
+    play('pop');
+  }
+
+  private stepCoop(dt: number) {
+    const now = performance.now();
+    for (let i = this.pings.length - 1; i >= 0; i--) {
+      const p = this.pings[i];
+      const k = (now / 600) % 1;
+      p.ring.scale.setScalar(0.8 + k * 0.9); (p.ring.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k);
+      if (now > p.until) { p.ring.removeFromParent(); p.ring.geometry.dispose(); this.overlay.remove(p.tag); this.pings.splice(i, 1); }
+    }
+    // sino do mutirão: brilho dourado em volta de quem está jogando
+    if (store.bellOn() && gfx.quality !== 'low') {
+      this.bellFx -= dt;
+      if (this.bellFx <= 0) {
+        this.bellFx = 0.45;
+        for (const a of [this.me, ...this.remotes.values()]) this.fx.burst(a.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.4 + Math.random() * 0.8, (Math.random() - 0.5) * 0.8)), ['#f6c445', '#fff3c4'], 2, { speed: 0.4, up: 0.8, size: 0.35, life: 0.9, gravity: -0.3 });
+      }
+    }
+  }
+
+  /** O sino tocou (por qualquer membro): som, confete e aviso sobre a Casa da Fazenda. */
+  private checkBell() {
+    const until = store.farm?.progression.bell?.until ?? 0;
+    if (this.lastBell >= 0 && until > this.lastBell && until > store.now()) {
+      play('level');
+      const d = doorTile(BUILDING_BY_ID.farmhouse.spot);
+      this.overlay.float('🔔 Mutirão! Colheitas com bônus', new THREE.Vector3(d.x + 0.5, 3, d.y - 1), 'w-float big');
+      this.celebrate(false);
+    }
+    this.lastBell = until;
   }
 
   // ================================================================ obstáculos físicos

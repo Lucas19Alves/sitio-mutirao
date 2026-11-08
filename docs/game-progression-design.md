@@ -130,3 +130,36 @@ O bônus é moderado (8–32% de chance de +1, ou 4–18% sobre a recompensa) e 
 - **Missão:** pílula compacta no canto. O centro fica livre para o mundo.
 - **Base:** Missões, Fazenda (central com Estoque, Balcão, Mercado, Obras, Campos, Ferramentas, Progresso e Ajustes), Loja, Mochila e Personagem.
 - **Painéis:** são folhas adaptáveis. Os de proximidade (prédios, campos, obstáculos, balcão) abrem e fecham sozinhos.
+
+## Cooperação (v1.2)
+
+O jogo é uma fazendinha cooperativa: estoque, obras, clientes, campos e metas são de todos. Personagem, pets, mochila e visual são de cada um. Os recursos coop dão motivo para jogar junto sem punir quem joga sozinho.
+
+- **Sino do Mutirão.** Fica na Casa da Fazenda e também no painel Equipe.
+  - Qualquer membro toca (a partir do nível 3).
+  - Por 10 minutos, toda coleta e colheita de qualquer membro tem 35% de chance de +1.
+  - Depois disso o sino descansa 3 horas.
+  - O mundo mostra brilho dourado em volta dos jogadores e um aviso na HUD com o tempo restante.
+- **Feira da Vila.** Meta semanal da fazenda inteira, renovada às segundas (fuso de São Paulo):
+  - três produtos que a fazenda já consegue fazer;
+  - a meta cresce com o nível e com o número de membros;
+  - três faixas: 35%, 70% e 100%;
+  - a entrega usa a mochila e depois o estoque;
+  - cada faixa é resgatada uma vez por semana;
+  - com 2+ pessoas contribuindo (15% ou mais cada), cada faixa paga +25% de moedas e +1 💎.
+- **Presentes.** Passar itens da sua mochila direto para a mochila de um colega. Serve para quem coleta abastecer quem está no balcão ou na feira. Se a mochila do colega estiver cheia, o presente é recusado.
+- **Sinais no mapa.** "Vem cá!", "Preciso de ajuda aqui", "Bora colher!", "Vamos terminar a obra!" e "Valeu, equipe!". Aparecem como argola pulsante e etiqueta no mundo para todos. Quem recebe vê um aviso com o botão "Ir", e o personagem anda até o lugar. É só tempo real, nada é gravado.
+- **Equipe.** Painel com quem está jogando, contribuições de cada um (coleta, produção, clientes, obras, presentes), pet de cada um, "Ir até" e "Dar presente".
+- **Mural.** As 30 últimas conquistas da fazenda: clientes, missões, obras (marcando quando foram em equipe), campos, pets, ferramentas, sino, feira, presentes e ajudantes. Quando um colega conquista algo, aparece um aviso na tela.
+
+## HUD (v1.2)
+
+- Avatar com rosto, nível e XP; moedas, cristais e mochila.
+- Pilha da equipe (quem está jogando) e menu "⋯".
+- A missão principal mostra uma barrinha de progresso.
+- Fichas de estado: sino tocando (com contagem regressiva) e feira da semana (% e "prêmio!").
+- Botão 📣 para sinais rápidos.
+- Tocar no mundo fecha o menu aberto.
+- Tocar num cliente leva até o balcão.
+- Missões: botão "Receber todas as prontas" (útil para fazendas antigas que já cumpriram etapas).
+- Campos ainda fechados aparecem só com cerca e placa, sem canteiros soltos.

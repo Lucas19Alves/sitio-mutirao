@@ -20,6 +20,7 @@ import { ProjectsPanel } from './Projects.tsx';
 import { OrdersPanel } from './Orders.tsx';
 import { BuildingPanel } from './Building.tsx';
 import { ProgressPanel } from './Progress.tsx';
+import { TeamPanel, FairPanel, BellCard } from './Coop.tsx';
 import { MissionsPanel, FarmHub, FieldsPanel, FieldPanel, ObstaclePanel, ShopPanel, MePanel } from './Growth.tsx';
 import type { Me } from '../../App.tsx';
 import type { Look } from '../../game/art/characters.ts';
@@ -58,6 +59,8 @@ export function Panels({ panel, onClose, me, onExit, onLookChange }: { panel: Pa
     case 'fields': return <FieldsPanel onClose={onClose} />;
     case 'shop': return <ShopPanel onClose={onClose} />;
     case 'me': return <MePanel me={me} onClose={onClose} />;
+    case 'team': return <TeamPanel me={me} onClose={onClose} />;
+    case 'fair': return <FairPanel onClose={onClose} />;
     case 'character': return <Sheet title="Ateliê" subtitle="Troque o visual do seu personagem" icon="ui_people" onClose={onClose} wide><CharacterEditor embedded me={me} onSaved={(l) => { onLookChange(l); onClose(); toast('Aparência salva.', 'ok'); }} /></Sheet>;
     case 'settings': return <SettingsPanel onClose={onClose} me={me} onExit={onExit} onLookChange={onLookChange} />;
     default: return null;
@@ -218,6 +221,7 @@ function HomePanel({ onClose }: { onClose: () => void }) {
           </>
         ) : <p className="note">Mochila no tamanho máximo.</p>}
       </section>
+      <BellCard />
       <Section title="Ajudantes">
         <p className="muted small">Moradores contratados trabalham sozinhos e levam o que produzem ao celeiro, mesmo quando ninguém está jogando.</p>
         <ul className="list">

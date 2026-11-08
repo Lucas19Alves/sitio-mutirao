@@ -13,9 +13,14 @@ export interface Progression {
   stats: Record<string, number>;
   obs?: string[];
   mdone?: string[];
+  bell?: { until: number; next: number; by: string };
+  fair?: Fair;
+  log?: LogEntry[];
   ms?: { side?: (GenMission | null)[]; daily?: { d: string; l: GenMission[] }; coop?: GenMission | null };
 }
 export interface GenMission { k: string; n: number; base: number; kind: 'side' | 'daily' | 'coop'; r: { coins: number; xp: number; cr: number }; done?: boolean }
+export interface Fair { w: string; goal: Record<string, number>; got: Record<string, number>; by: Record<string, number>; claimed: string[] }
+export interface LogEntry { k: string; u: string; at: number; x?: string; g?: number; q?: number; to?: string; coop?: boolean }
 export interface Pets { own: Record<string, { xp: number }>; eq: string | null }
 export interface FarmRow {
   id: string; name: string; owner_id: string; invite_code: string;
@@ -53,7 +58,12 @@ export type Action =
   | { t: 'pet'; p: string }
   | { t: 'peq'; p: string | null }
   | { t: 'perk'; p: string }
-  | { t: 'cosm'; c: string };
+  | { t: 'cosm'; c: string }
+  | { t: 'bell' }
+  | { t: 'fair' }
+  | { t: 'fgive'; i: string; q: number }
+  | { t: 'fclaim'; tier: number }
+  | { t: 'gift'; u: string; i: string; q: number };
 
 export interface ActResult { ok: boolean; e?: string; [k: string]: unknown }
 
@@ -64,6 +74,7 @@ interface Delta {
   farm: Omit<FarmRow, 'id' | 'name' | 'owner_id' | 'invite_code' | 'rev'>;
   inv: Record<string, number>; ents: Ent[]; gone: string[]; orders: Order[];
   member?: { user_id: string; stats: Record<string, number>; bag?: Record<string, number>; bag_tier?: number; pets?: Pets; perks?: Record<string, number>; owned?: string[] };
+  bags?: Record<string, Record<string, number>>;
   res?: ActResult[]; dup?: boolean; noop?: boolean;
 }
 
@@ -83,6 +94,8 @@ class FarmStore {
   version = 0;
   /** usuário local (para a mochila) */
   myId = '';
+  /** horário da última entrada do mural já vista (para avisar as novas) */
+  lastLog = 0;
   /** coletas a caminho do servidor, já mostradas na mochila */
   private pend: Record<string, number> = {};
 
@@ -116,6 +129,7 @@ class FarmStore {
     this.ents = Object.fromEntries(s.ents.map((e) => [e.k, e]));
     this.orders = Object.fromEntries(s.orders.map((o) => [o.slot, o]));
     this.members = s.members;
+    this.lastLog = s.farm.progression.log?.[0]?.at ?? 0;
     this.emit();
     bus.emit('state:reset');
   }
@@ -144,6 +158,7 @@ class FarmStore {
     for (const e of d.ents) this.ents[e.k] = e;
     for (const k of d.gone) delete this.ents[k];
     for (const o of d.orders) this.orders[o.slot] = o;
+    if (d.bags) for (const m of this.members) if (d.bags[m.user_id]) m.bag = d.bags[m.user_id];
     if (d.member) {
       const m = this.members.find((x) => x.user_id === d.member!.user_id);
       if (m) { const { user_id: _u, ...rest } = d.member; Object.assign(m, rest); }
@@ -153,6 +168,8 @@ class FarmStore {
     if (this.farm.level > prevLevel) bus.emit('levelup', this.farm.level);
     if (this.farm.progression.regions.length > prevRegions || (this.farm.progression.obs?.length ?? 0) > prevObs) bus.emit('regions');
     if (d.member && d.member.user_id !== this.myId) bus.emit('members');
+    const log = this.farm.progression.log?.[0];
+    if (log && log.at > this.lastLog) { if (this.lastLog) bus.emit('feed', this.farm.progression.log!.filter((e) => e.at > this.lastLog)); this.lastLog = log.at; }
   }
 
   setMembers(m: Member[]) { this.members = m; this.emit(); }
@@ -250,6 +267,7 @@ class FarmStore {
   pets = (): Pets => this.me()?.pets ?? { own: {}, eq: null };
   perk = (p: string) => this.me()?.perks?.[p] ?? 0;
   owned = (c: string) => !!this.me()?.owned?.includes(c);
+  bellOn = () => (this.farm?.progression.bell?.until ?? 0) > this.now();
   stat = (k: string) => this.farm?.progression.stats[k] ?? 0;
 }
 

@@ -192,6 +192,28 @@ const sell = await act(a, farm, [{ t: 'sell', i: 'wood', q: 1 }]);
 assert.ok(sell.res[0].ok && sell.res[0].g === 2);
 console.log('✓ pedido sem itens recusado, venda credita moedas');
 
+// Coop: sino (nível 3 + recarga), feira semanal (bolsa/estoque, faixa única), presentes e mural
+const uidA = (await a.auth.getUser()).data.user.id;
+const lvNow = (await a.rpc('get_farm_state', { p_farm: farm })).data.farm.level;
+const bell = await act(a, farm, [{ t: 'bell' }, { t: 'bell' }]);
+if (lvNow >= 3) { assert.ok(bell.res[0].ok, JSON.stringify(bell.res)); assert.equal(bell.res[1].e, 'cooldown'); }
+else assert.ok(bell.res[0].e.startsWith('level_required'), JSON.stringify(bell.res));
+const fr = await act(a, farm, [{ t: 'fair' }]);
+const fair = fr.farm.progression.fair;
+assert.equal(Object.keys(fair.goal).length > 0, true, JSON.stringify(fair));
+const fcl = await act(b, farm, [{ t: 'fclaim', tier: 0 }]);
+assert.equal(fcl.res[0].e, 'quest_incomplete');
+// presente: B pega 2 madeiras na mochila e dá para A; mochila de A muda no delta (bags)
+const tree2 = WORLD_NODES.filter((n) => n.r === 'sitio' && n.t === 'tree_oak').slice(6, 7);
+await act(b, farm, tree2.map((n) => ({ t: 'harvest', n: n.id })));
+const gf = await act(b, farm, [{ t: 'gift', u: uidA, i: 'wood', q: 2 }, { t: 'gift', u: (await b.auth.getUser()).data.user.id, i: 'wood', q: 1 }]);
+assert.ok(gf.res[0].ok && gf.res[0].q === 2, JSON.stringify(gf.res));
+assert.equal(gf.res[1].e, 'invalid', 'presente para si mesmo');
+assert.ok((gf.bags[uidA].wood ?? 0) >= 2, 'mochila do amigo atualizada no delta');
+const log = gf.farm.progression.log;
+assert.equal(log[0].k, 'gift'); assert.equal(log[0].to, uidA);
+console.log('✓ coop: sino, feira semanal, presente entre colegas e mural', { sino: bell.res.map((r) => r.ok ? 'ok' : r.e), feira: fair.goal, mural: log.length });
+
 // Membros e perfis visíveis entre colegas
 const { data: profs } = await a.from('profiles').select('username');
 assert.equal(profs.length, 2);

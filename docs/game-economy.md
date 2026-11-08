@@ -100,3 +100,13 @@ Sem contar as recorrentes, a campanha completa rende ~141 💎. Com as diárias,
 - **Aceleração:** o custo é recalculado no servidor com o horário do servidor. Pedido já pronto devolve `already_ready`.
 - **Visual:** `profiles.owned` só é escrito pelo servidor. Um gatilho em `profiles` devolve ao padrão itens pagos não liberados.
 - **Saldos:** cristais e moedas têm `check (>= 0)` no banco.
+
+## Recursos coop (v1.2)
+
+| Recurso | Fonte | Gasto e limite |
+|---|---|---|
+| Sino do Mutirão | +1 com 35% de chance por coleta durante 10 min | 3 h de descanso, sem custo |
+| Feira da Vila | 3 faixas: 150/300/600 moedas + 10/20/40 por nível; 💎 2/3/5; reputação 2/3/5; XP | consome produtos do estoque e da mochila (gasto semanal); faixa única por semana |
+| Presentes | nenhuma (só move itens entre mochilas) | limitado pela mochila do colega |
+
+Com 2+ contribuintes, a feira paga +25% de moedas e +1 💎 por faixa: até ~3 💎 extras por semana. A meta da feira escala com o número de membros (×0,6 + 0,4 por membro), para não ficar fácil demais com equipe grande.

@@ -156,14 +156,14 @@ export function Qty({ value, max, onChange }: { value: number; max: number; onCh
   );
 }
 
-interface Toast { id: number; kind: string; text: string; icon?: string }
+interface Toast { id: number; kind: string; text: string; icon?: string; go?: { x: number; z: number } }
 
 export function Toasts() {
   const [list, setList] = useState<Toast[]>([]);
-  useEffect(() => bus.on('toast', (t: { kind: string; text: string; icon?: string }) => {
+  useEffect(() => bus.on('toast', (t: { kind: string; text: string; icon?: string; go?: { x: number; z: number } }) => {
     const id = Math.random();
     setList((l) => (l.some((x) => x.text === t.text) ? l : [...l.slice(-2), { id, ...t }]));
-    setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), 3400);
+    setTimeout(() => setList((l) => l.filter((x) => x.id !== id)), t.go ? 6500 : 3400);
   }), []);
   const def: Record<string, string> = { ok: 'star', warn: 'ui_lock', info: 'ui_chat' };
   return (
@@ -172,6 +172,7 @@ export function Toasts() {
         <div key={t.id} className={`toast toast-${t.kind}`}>
           <img src={iconUrl(t.icon ?? def[t.kind] ?? 'ui_chat', 64)} width={28} height={28} alt="" />
           <span>{t.text}</span>
+          {t.go && <button className="toast-go" onClick={() => bus.emit('walkto', t.go)}>Ir</button>}
         </div>
       ))}
     </div>
