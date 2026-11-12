@@ -166,3 +166,7 @@ docs/              banco de dados e relatório
 ```
 
 Mais detalhes: [docs/DATABASE.md](docs/DATABASE.md) e [docs/RELATORIO.md](docs/RELATORIO.md).
+
+## Licença
+
+Projeto open source sob a licença [MIT](LICENSE). Feito por [Lucas Alves](https://portfolio-lucasalves.vercel.app/).
